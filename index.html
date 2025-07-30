@@ -139,10 +139,11 @@
 
         #pitchCanvas {
             width: 100%;
-            height: 400px;
+            height: 500px;
             border-radius: 8px;
             background: white;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: block;
         }
 
         .stats-grid {
@@ -154,28 +155,38 @@
 
         .stat-card {
             background: linear-gradient(135deg, #f8f9ff 0%, #e8ebff 100%);
-            padding: 20px;
+            padding: 25px;
             border-radius: 12px;
-            border-left: 4px solid #667eea;
+            border-left: 5px solid #667eea;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
         }
 
         .stat-title {
-            font-size: 0.9rem;
-            color: #666;
-            margin-bottom: 8px;
+            font-size: 1rem;
+            color: #555;
+            margin-bottom: 12px;
             font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .stat-value {
-            font-size: 1.8rem;
+            font-size: 2.5rem;
             font-weight: bold;
             color: #333;
+            line-height: 1;
         }
 
         .stat-unit {
-            font-size: 0.9rem;
+            font-size: 1.1rem;
             color: #666;
-            margin-left: 5px;
+            margin-left: 8px;
+            font-weight: normal;
         }
 
         .progress-bar {
@@ -221,26 +232,35 @@
 
         .legend {
             display: flex;
-            gap: 20px;
+            gap: 25px;
             justify-content: center;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             flex-wrap: wrap;
         }
 
         .legend-item {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            background: rgba(255,255,255,0.8);
-            border-radius: 20px;
-            font-size: 0.9rem;
+            gap: 12px;
+            padding: 12px 20px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: 2px solid transparent;
+        }
+
+        .legend-item:hover {
+            border-color: #667eea;
+            transform: translateY(-1px);
         }
 
         .legend-color {
-            width: 20px;
-            height: 3px;
+            width: 25px;
+            height: 4px;
             border-radius: 2px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
         }
 
         @media (max-width: 768px) {
@@ -614,57 +634,96 @@
             }
 
             drawGrid(width, height, maxTime, minFreq, maxFreq) {
-                this.ctx.strokeStyle = '#e0e0e0';
+                this.ctx.strokeStyle = '#e8e8e8';
                 this.ctx.lineWidth = 1;
-                this.ctx.font = '12px Arial';
-                this.ctx.fillStyle = '#666';
+                this.ctx.font = '14px Arial';
+                this.ctx.fillStyle = '#555';
 
-                const padding = 60;
+                const padding = 80;
                 const graphWidth = width - padding * 2;
                 const graphHeight = height - padding * 2;
 
+                // Clear previous drawings
+                this.ctx.clearRect(0, 0, width, height);
+                this.ctx.fillStyle = 'white';
+                this.ctx.fillRect(0, 0, width, height);
+
                 // Vertical grid lines (time)
-                const timeSteps = 10;
+                const timeSteps = Math.min(12, Math.ceil(maxTime));
                 for (let i = 0; i <= timeSteps; i++) {
                     const x = padding + (i / timeSteps) * graphWidth;
                     const time = (i / timeSteps) * maxTime;
                     
+                    this.ctx.strokeStyle = i % 2 === 0 ? '#d0d0d0' : '#e8e8e8';
                     this.ctx.beginPath();
                     this.ctx.moveTo(x, padding);
                     this.ctx.lineTo(x, height - padding);
                     this.ctx.stroke();
 
-                    this.ctx.fillText(time.toFixed(1) + 's', x - 15, height - 10);
+                    if (i % 2 === 0) {
+                        this.ctx.fillStyle = '#555';
+                        this.ctx.textAlign = 'center';
+                        this.ctx.fillText(time.toFixed(1) + 's', x, height - padding + 25);
+                    }
                 }
 
                 // Horizontal grid lines (frequency)
-                const freqSteps = 8;
-                for (let i = 0; i <= freqSteps; i++) {
-                    const y = padding + (i / freqSteps) * graphHeight;
-                    const freq = maxFreq - (i / freqSteps) * (maxFreq - minFreq);
+                const freqSteps = 10;
+                const noteLines = [80, 100, 130, 150, 200, 250, 300, 350, 400, 500, 600, 700, 800];
+                const visibleNotes = noteLines.filter(freq => freq >= minFreq && freq <= maxFreq);
+                
+                // Draw frequency grid lines
+                visibleNotes.forEach((freq, index) => {
+                    const y = padding + (1 - (freq - minFreq) / (maxFreq - minFreq)) * graphHeight;
                     
+                    this.ctx.strokeStyle = freq % 100 === 0 ? '#d0d0d0' : '#e8e8e8';
+                    this.ctx.lineWidth = freq % 100 === 0 ? 1.5 : 1;
                     this.ctx.beginPath();
                     this.ctx.moveTo(padding, y);
                     this.ctx.lineTo(width - padding, y);
                     this.ctx.stroke();
 
-                    this.ctx.fillText(freq.toFixed(0) + 'Hz', 5, y + 5);
-                }
+                    this.ctx.fillStyle = '#555';
+                    this.ctx.textAlign = 'right';
+                    this.ctx.fillText(freq + ' Hz', padding - 10, y + 5);
+                    
+                    // Add note names for common frequencies
+                    const note = this.frequencyToNote(freq);
+                    if (note && freq % 100 === 0) {
+                        this.ctx.fillStyle = '#667eea';
+                        this.ctx.textAlign = 'left';
+                        this.ctx.fillText(note, padding + 10, y - 5);
+                    }
+                });
 
-                // Axes
+                // Main axes
                 this.ctx.strokeStyle = '#333';
-                this.ctx.lineWidth = 2;
+                this.ctx.lineWidth = 3;
                 this.ctx.beginPath();
                 this.ctx.moveTo(padding, padding);
                 this.ctx.lineTo(padding, height - padding);
                 this.ctx.lineTo(width - padding, height - padding);
                 this.ctx.stroke();
 
-                // Labels
+                // Axis labels
                 this.ctx.fillStyle = '#333';
-                this.ctx.font = 'bold 14px Arial';
-                this.ctx.fillText('Frequency (Hz)', 5, 30);
-                this.ctx.fillText('Time (seconds)', width - 120, height - 10);
+                this.ctx.font = 'bold 16px Arial';
+                this.ctx.textAlign = 'center';
+                
+                // Y-axis label (rotated)
+                this.ctx.save();
+                this.ctx.translate(25, height / 2);
+                this.ctx.rotate(-Math.PI / 2);
+                this.ctx.fillText('Frequency (Hz)', 0, 0);
+                this.ctx.restore();
+                
+                // X-axis label
+                this.ctx.fillText('Time (seconds)', width / 2, height - 25);
+
+                // Title
+                this.ctx.font = 'bold 18px Arial';
+                this.ctx.fillStyle = '#333';
+                this.ctx.fillText('Voice Pitch Analysis', width / 2, 30);
             }
 
             drawPitchLine(data, width, height, maxTime, minFreq, maxFreq) {
@@ -753,12 +812,17 @@
                     const comparisonCard = document.createElement('div');
                     comparisonCard.className = 'stat-card';
                     comparisonCard.style.gridColumn = '1 / -1';
+                    comparisonCard.style.background = 'linear-gradient(135deg, #fff2e6 0%, #ffe6cc 100%)';
+                    comparisonCard.style.borderLeft = '5px solid #ff9500';
                     comparisonCard.innerHTML = `
-                        <div class="stat-title">Comparison Analysis</div>
-                        <div style="font-size: 1rem; line-height: 1.5;">
-                            Average Difference: ${comparison.avgDiff.toFixed(1)} Hz<br>
-                            Correlation: ${comparison.correlation.toFixed(2)}<br>
-                            Improvement: ${comparison.improvement > 0 ? '+' : ''}${comparison.improvement.toFixed(1)} Hz
+                        <div class="stat-title">📊 Comparison Analysis</div>
+                        <div style="font-size: 1.1rem; line-height: 1.8; color: #333;">
+                            <strong>Average Difference:</strong> ${comparison.avgDiff.toFixed(1)} Hz<br>
+                            <strong>Correlation:</strong> ${comparison.correlation.toFixed(2)} ${this.getCorrelationDescription(comparison.correlation)}<br>
+                            <strong>Change:</strong> <span style="color: ${comparison.improvement > 0 ? '#28a745' : '#dc3545'}; font-weight: bold;">
+                                ${comparison.improvement > 0 ? '+' : ''}${comparison.improvement.toFixed(1)} Hz
+                                ${comparison.improvement > 0 ? '📈' : '📉'}
+                            </span>
                         </div>
                     `;
                     statsGrid.appendChild(comparisonCard);
@@ -827,6 +891,14 @@
                     correlation: correlation,
                     improvement: avg2 - avg1
                 };
+            }
+
+            getCorrelationDescription(correlation) {
+                if (correlation > 0.8) return '(Very Strong)';
+                if (correlation > 0.6) return '(Strong)';
+                if (correlation > 0.4) return '(Moderate)';
+                if (correlation > 0.2) return '(Weak)';
+                return '(Very Weak)';
             }
 
             exportData() {
