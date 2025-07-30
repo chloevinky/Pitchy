@@ -432,14 +432,27 @@
             async extractPitchData(audioBuffer) {
                 const channelData = audioBuffer.getChannelData(0);
                 const sampleRate = audioBuffer.sampleRate;
-                const windowSize = 2048;
-                const hopSize = 512;
+                const windowSize = 4096; // Larger window for better frequency resolution
+                const hopSize = 1024;
                 const pitchData = [];
 
-                // Simple autocorrelation-based pitch detection
-                for (let i = 0; i < channelData.length - windowSize; i += hopSize) {
-                    const window = channelData.slice(i, i + windowSize);
-                    const pitch = this.detectPitch(window, sampleRate);
+                // Pre-emphasis filter to enhance higher frequencies
+                const preEmphasis = 0.97;
+                const filtered = new Float32Array(channelData.length);
+                filtered[0] = channelData[0];
+                for (let i = 1; i < channelData.length; i++) {
+                    filtered[i] = channelData[i] - preEmphasis * channelData[i - 1];
+                }
+
+                for (let i = 0; i < filtered.length - windowSize; i += hopSize) {
+                    const window = filtered.slice(i, i + windowSize);
+                    
+                    // Apply Hamming window
+                    for (let j = 0; j < window.length; j++) {
+                        window[j] *= 0.54 - 0.46 * Math.cos(2 * Math.PI * j / (window.length - 1));
+                    }
+                    
+                    const pitch = this.detectPitchYIN(window, sampleRate);
                     const timeStamp = i / sampleRate;
                     
                     pitchData.push({
@@ -452,42 +465,72 @@
                 return pitchData;
             }
 
-            detectPitch(buffer, sampleRate) {
-                const autocorrelation = new Array(buffer.length).fill(0);
+            detectPitchYIN(buffer, sampleRate) {
+                const threshold = 0.15;
+                const minPeriod = Math.floor(sampleRate / 800); // 800 Hz max
+                const maxPeriod = Math.floor(sampleRate / 80);  // 80 Hz min
                 
-                // Calculate autocorrelation
-                for (let lag = 0; lag < buffer.length; lag++) {
+                if (maxPeriod >= buffer.length) return 0;
+
+                // Calculate difference function
+                const d = new Float32Array(maxPeriod + 1);
+                for (let tau = minPeriod; tau <= maxPeriod; tau++) {
                     let sum = 0;
-                    for (let i = 0; i < buffer.length - lag; i++) {
-                        sum += buffer[i] * buffer[i + lag];
+                    for (let i = 0; i < buffer.length - tau; i++) {
+                        const diff = buffer[i] - buffer[i + tau];
+                        sum += diff * diff;
                     }
-                    autocorrelation[lag] = sum;
+                    d[tau] = sum;
                 }
 
-                // Find the first peak after the initial peak
-                let maxVal = Math.max(...autocorrelation);
-                let threshold = maxVal * 0.3;
+                // Calculate cumulative mean normalized difference
+                const cmnd = new Float32Array(maxPeriod + 1);
+                cmnd[0] = 1;
+                let runningSum = 0;
                 
-                for (let i = Math.floor(sampleRate / 800); i < Math.floor(sampleRate / 80); i++) {
-                    if (autocorrelation[i] > threshold) {
-                        // Refine using parabolic interpolation
-                        if (i > 0 && i < autocorrelation.length - 1) {
-                            const y1 = autocorrelation[i - 1];
-                            const y2 = autocorrelation[i];
-                            const y3 = autocorrelation[i + 1];
-                            const x0 = (y3 - y1) / (2 * (2 * y2 - y1 - y3));
-                            const refinedLag = i + x0;
-                            return sampleRate / refinedLag;
-                        }
-                        return sampleRate / i;
+                for (let tau = 1; tau <= maxPeriod; tau++) {
+                    runningSum += d[tau];
+                    if (runningSum === 0) {
+                        cmnd[tau] = 1;
+                    } else {
+                        cmnd[tau] = d[tau] * tau / runningSum;
                     }
                 }
-                
+
+                // Find the first minimum below threshold
+                for (let tau = minPeriod; tau <= maxPeriod; tau++) {
+                    if (cmnd[tau] < threshold) {
+                        // Look for local minimum
+                        while (tau + 1 <= maxPeriod && cmnd[tau + 1] < cmnd[tau]) {
+                            tau++;
+                        }
+                        
+                        // Parabolic interpolation for better accuracy
+                        if (tau > 0 && tau < maxPeriod) {
+                            const s0 = cmnd[tau - 1];
+                            const s1 = cmnd[tau];
+                            const s2 = cmnd[tau + 1];
+                            
+                            const a = (s0 - 2 * s1 + s2) / 2;
+                            const b = (s2 - s0) / 2;
+                            
+                            if (a !== 0) {
+                                const tauFraction = -b / (2 * a);
+                                if (Math.abs(tauFraction) < 1) {
+                                    return sampleRate / (tau + tauFraction);
+                                }
+                            }
+                        }
+                        
+                        return sampleRate / tau;
+                    }
+                }
+
                 return 0; // No pitch detected
             }
 
             frequencyToNote(frequency) {
-                if (frequency < 80 || frequency > 800) return '';
+                if (frequency < 80 || frequency > 800 || frequency === 0) return '';
                 
                 const A4 = 440;
                 const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -495,8 +538,9 @@
                 const semitones = 12 * Math.log2(frequency / A4);
                 const octave = Math.floor(4 + semitones / 12);
                 const noteIndex = Math.round(semitones) % 12;
+                const finalIndex = noteIndex < 0 ? noteIndex + 12 : noteIndex;
                 
-                return noteNames[noteIndex < 0 ? noteIndex + 12 : noteIndex] + octave;
+                return noteNames[finalIndex] + octave;
             }
 
             displayResults() {
@@ -536,7 +580,7 @@
 
                 if (this.analysisData.length === 0) return;
 
-                // Find global min/max for scaling
+                // Find global min/max for scaling, filtering out zero values
                 let minFreq = Infinity, maxFreq = 0, maxTime = 0;
                 
                 this.analysisData.forEach(data => {
@@ -549,10 +593,16 @@
                     });
                 });
 
+                // Set reasonable defaults if no valid pitches found
+                if (minFreq === Infinity) {
+                    minFreq = 80;
+                    maxFreq = 400;
+                }
+
                 // Add some padding
                 const freqRange = maxFreq - minFreq;
-                minFreq -= freqRange * 0.1;
-                maxFreq += freqRange * 0.1;
+                minFreq = Math.max(80, minFreq - freqRange * 0.1);
+                maxFreq = Math.min(800, maxFreq + freqRange * 0.1);
 
                 // Draw grid
                 this.drawGrid(width, height, maxTime, minFreq, maxFreq);
@@ -569,7 +619,7 @@
                 this.ctx.font = '12px Arial';
                 this.ctx.fillStyle = '#666';
 
-                const padding = 50;
+                const padding = 60;
                 const graphWidth = width - padding * 2;
                 const graphHeight = height - padding * 2;
 
@@ -609,10 +659,16 @@
                 this.ctx.lineTo(padding, height - padding);
                 this.ctx.lineTo(width - padding, height - padding);
                 this.ctx.stroke();
+
+                // Labels
+                this.ctx.fillStyle = '#333';
+                this.ctx.font = 'bold 14px Arial';
+                this.ctx.fillText('Frequency (Hz)', 5, 30);
+                this.ctx.fillText('Time (seconds)', width - 120, height - 10);
             }
 
             drawPitchLine(data, width, height, maxTime, minFreq, maxFreq) {
-                const padding = 50;
+                const padding = 60;
                 const graphWidth = width - padding * 2;
                 const graphHeight = height - padding * 2;
 
@@ -622,23 +678,30 @@
                 this.ctx.lineJoin = 'round';
 
                 this.ctx.beginPath();
-                let firstPoint = true;
+                let hasStarted = false;
 
                 data.pitchData.forEach(point => {
-                    if (point.frequency > 0) {
+                    if (point.frequency > 0 && point.frequency >= minFreq && point.frequency <= maxFreq) {
                         const x = padding + (point.time / maxTime) * graphWidth;
                         const y = padding + (1 - (point.frequency - minFreq) / (maxFreq - minFreq)) * graphHeight;
 
-                        if (firstPoint) {
+                        if (!hasStarted) {
                             this.ctx.moveTo(x, y);
-                            firstPoint = false;
+                            hasStarted = true;
                         } else {
                             this.ctx.lineTo(x, y);
                         }
+                    } else if (hasStarted) {
+                        // Break the line when there's no pitch
+                        this.ctx.stroke();
+                        this.ctx.beginPath();
+                        hasStarted = false;
                     }
                 });
 
-                this.ctx.stroke();
+                if (hasStarted) {
+                    this.ctx.stroke();
+                }
             }
 
             createLegend() {
@@ -669,7 +732,7 @@
                         { title: `${filePrefix}Min Pitch`, value: stats.min.toFixed(1), unit: 'Hz' },
                         { title: `${filePrefix}Max Pitch`, value: stats.max.toFixed(1), unit: 'Hz' },
                         { title: `${filePrefix}Range`, value: (stats.max - stats.min).toFixed(1), unit: 'Hz' },
-                        { title: `${filePrefix}Stability`, value: (100 - stats.variance).toFixed(1), unit: '%' },
+                        { title: `${filePrefix}Stability`, value: stats.stability.toFixed(1), unit: '%' },
                         { title: `${filePrefix}Duration`, value: stats.duration.toFixed(1), unit: 's' }
                     ];
 
@@ -703,34 +766,45 @@
             }
 
             calculateStatistics(pitchData) {
-                const validPitches = pitchData.filter(p => p.frequency > 0).map(p => p.frequency);
+                const validPitches = pitchData.filter(p => p.frequency > 0 && p.frequency >= 80 && p.frequency <= 800).map(p => p.frequency);
                 
                 if (validPitches.length === 0) {
-                    return { average: 0, min: 0, max: 0, variance: 0, duration: 0 };
+                    return { average: 0, min: 0, max: 0, stability: 0, duration: 0 };
                 }
 
                 const average = validPitches.reduce((a, b) => a + b, 0) / validPitches.length;
                 const min = Math.min(...validPitches);
                 const max = Math.max(...validPitches);
-                const variance = Math.sqrt(validPitches.reduce((a, b) => a + Math.pow(b - average, 2), 0) / validPitches.length) / average * 100;
+                
+                // Calculate standard deviation
+                const variance = validPitches.reduce((a, b) => a + Math.pow(b - average, 2), 0) / validPitches.length;
+                const standardDeviation = Math.sqrt(variance);
+                
+                // Stability as percentage (lower deviation = higher stability)
+                const stability = Math.max(0, 100 - (standardDeviation / average * 100));
+                
                 const duration = pitchData[pitchData.length - 1]?.time || 0;
 
-                return { average, min, max, variance, duration };
+                return { average, min, max, stability, duration };
             }
 
             compareFiles() {
                 if (this.analysisData.length < 2) return null;
 
-                const data1 = this.analysisData[0].pitchData.filter(p => p.frequency > 0);
-                const data2 = this.analysisData[1].pitchData.filter(p => p.frequency > 0);
+                const data1 = this.analysisData[0].pitchData.filter(p => p.frequency > 0 && p.frequency >= 80 && p.frequency <= 800);
+                const data2 = this.analysisData[1].pitchData.filter(p => p.frequency > 0 && p.frequency >= 80 && p.frequency <= 800);
+
+                if (data1.length === 0 || data2.length === 0) {
+                    return { avgDiff: 0, correlation: 0, improvement: 0 };
+                }
 
                 const avg1 = data1.reduce((a, b) => a + b.frequency, 0) / data1.length;
                 const avg2 = data2.reduce((a, b) => a + b.frequency, 0) / data2.length;
 
-                // Simple correlation calculation
+                // Simple correlation calculation using overlapping time periods
                 const minLength = Math.min(data1.length, data2.length);
                 let correlation = 0;
-                if (minLength > 0) {
+                if (minLength > 1) {
                     let sumXY = 0, sumX = 0, sumY = 0, sumX2 = 0, sumY2 = 0;
                     
                     for (let i = 0; i < minLength; i++) {
