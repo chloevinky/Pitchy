@@ -1,568 +1,351 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pitchy - Voice Pitch Analysis</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            color: #333;
-        }
-
-        header {
-            text-align: center;
-            margin: 20px 0;
-            color: #fff;
-        }
-
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-        }
-
-        .container {
-            width: 90%;
-            max-width: 1200px;
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
-
-        .controls {
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .file-list {
-            margin-bottom: 20px;
-            width: 100%;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .file-item {
-            margin: 5px;
-            padding: 10px 15px;
-            border: 1px solid #667eea;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: background 0.2s, color 0.2s;
-        }
-
-        .file-item.selected {
-            background: #667eea;
-            color: #fff;
-        }
-
-        .btn {
-            background: #667eea;
-            color: #fff;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: transform 0.2s;
-            margin: 5px;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-        }
-
-        #loadingDiv {
-            display: none;
-            padding: 20px;
-            text-align: center;
-        }
-
-        #resultsDiv {
-            display: none;
-        }
-
-        #canvasContainer {
-            position: relative;
-            margin: 20px 0;
-            width: 100%;
-            height: 500px;
-            background: #f9f9f9;
-        }
-
-        canvas {
-            width: 100%;
-            height: 100%;
-        }
-
-        .stats {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-around;
-            padding: 20px;
-        }
-
-        .stat-card {
-            background: #f1f1f1;
-            border-radius: 10px;
-            padding: 15px;
-            width: 140px;
-            text-align: center;
-            margin: 10px;
-        }
-
-        .legend {
-            display: flex;
-            justify-content: center;
-            padding-bottom: 20px;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            margin: 0 10px;
-        }
-
-        .legend-color {
-            width: 20px;
-            height: 20px;
-            margin-right: 8px;
-            border-radius: 4px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Pitchy - Voice Training</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family:Segoe UI, sans-serif;
+      background:linear-gradient(135deg,#667eea,#764ba2);
+      color:#333; display:flex; flex-direction:column; align-items:center; min-height:100vh;
+    }
+    header { text-align:center; margin:20px; color:#fff; }
+    .container {
+      width:90%; max-width:1200px; background:#fff; border-radius:10px;
+      box-shadow:0 4px 6px rgba(0,0,0,0.1); overflow:hidden;
+    }
+    .controls {
+      padding:20px; display:flex; flex-direction:column; align-items:center;
+    }
+    /* Accessible file input */
+    #audioInput { margin-bottom:15px; }
+    #audioInput::file-selector-button {
+      background:#667eea; color:#fff; border:none; padding:10px 20px;
+      border-radius:20px; cursor:pointer;
+    }
+    .btn {
+      background:#667eea; color:#fff; border:none; padding:12px 24px;
+      border-radius:25px; cursor:pointer; margin:5px;
+    }
+    .btn:hover { transform:translateY(-2px); }
+    #loadingDiv { display:none; padding:10px; }
+    #resultsDiv { display:none; }
+    #canvasContainer {
+      width:100%; height:500px; background:#f9f9f9; position:relative; margin:20px 0;
+    }
+    canvas { width:100%; height:100%; }
+    /* Organized stats */
+    .stats { display:flex; flex-direction:column; padding:0 20px 20px; }
+    .stats-group { margin-bottom:20px; }
+    .stats-group h3 {
+      margin-bottom:10px; color:#667eea; font-size:1.2rem;
+    }
+    .stat-cards {
+      display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
+      gap:10px;
+    }
+    .stat-card {
+      background:#f1f1f1; border-radius:8px; padding:10px; text-align:center;
+      font-size:0.9rem;
+    }
+    .legend {
+      display:flex; justify-content:center; padding-bottom:20px;
+    }
+    .legend-item {
+      display:flex; align-items:center; margin:0 10px;
+    }
+    .legend-color {
+      width:16px; height:16px; margin-right:5px; border-radius:4px;
+    }
+  </style>
 </head>
 <body>
-    <header>
-        <h1>Pitchy Voice Training</h1>
-        <p>Analyze your voice pitch with male, androgynous, and female frequency bands.</p>
-    </header>
-    <div class="container">
-        <div class="controls">
-            <input type="file" id="audioInput" accept="audio/*" multiple>
-            <div class="file-list" id="fileList"></div>
-            <button class="btn" onclick="startAnalysis()">Analyze</button>
-            <button class="btn" onclick="playPause()">Play/Pause</button>
-            <button class="btn" onclick="exportData()">Export CSV</button>
-            <div id="loadingDiv">Analyzing... Please wait.</div>
-        </div>
-        <div id="resultsDiv">
-            <div id="canvasContainer"><canvas id="pitchCanvas"></canvas></div>
-            <div class="stats" id="statsContainer"></div>
-            <div class="legend" id="legendContainer"></div>
-        </div>
+  <header>
+    <h1>Pitchy Voice Training</h1>
+    <p>See your pitch against male, androgynous &amp; female bands.</p>
+  </header>
+
+  <div class="container">
+    <div class="controls">
+      <input
+        type="file"
+        id="audioInput"
+        accept="audio/*"
+        multiple
+        aria-label="Select audio files"
+        title="Select audio files"
+      >
+      <button class="btn" onclick="startAnalysis()" title="Analyze selected audio files">
+        Analyze
+      </button>
+      <button class="btn" onclick="playPause()" title="Play or pause audio">
+        Play/Pause
+      </button>
+      <button class="btn" onclick="exportData()" title="Export analysis as CSV">
+        Export CSV
+      </button>
+      <div id="loadingDiv">Analyzing… please wait.</div>
     </div>
 
-    <script>
-        class PitchAnalyzer {
-            constructor() {
-                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                this.audioFiles = [];
-                this.analysisData = [];
-            }
+    <div id="resultsDiv">
+      <div id="canvasContainer">
+        <canvas id="pitchCanvas"></canvas>
+      </div>
+      <div class="stats" id="statsContainer"></div>
+      <div class="legend" id="legendContainer"></div>
+    </div>
+  </div>
 
-            addFiles(files) {
-                this.audioFiles = Array.from(files);
-                const fileList = document.getElementById('fileList');
-                fileList.innerHTML = '';
-                this.audioFiles.forEach((file, idx) => {
-                    const div = document.createElement('div');
-                    div.className = 'file-item';
-                    div.textContent = file.name;
-                    div.onclick = () => div.classList.toggle('selected');
-                    fileList.appendChild(div);
-                });
-            }
+  <script>
+    class PitchAnalyzer {
+      constructor() {
+        this.audioContext = new (window.AudioContext||window.webkitAudioContext)();
+        this.audioFiles = [];
+        this.analysisData = [];
+      }
 
-            async processFiles() {
-                if (!this.audioFiles.length) return;
-                document.getElementById('loadingDiv').style.display = 'block';
-                try {
-                    for (let i = 0; i < this.audioFiles.length; i++) {
-                        const audioBuffer = await this.loadAudioFile(this.audioFiles[i]);
-                        const pitchData = await this.extractPitchData(audioBuffer);
-                        this.analysisData.push({
-                            filename: this.audioFiles[i].name,
-                            buffer: audioBuffer,
-                            pitchData: pitchData,
-                            color: i === 0 ? '#667eea' : '#ff6b6b'
-                        });
-                    }
-                    this.displayResults();
-                } catch (error) {
-                    console.error('Analysis failed:', error);
-                    alert('Analysis failed. Please try again with different files.');
-                }
-            }
+      addFiles(files) {
+        this.audioFiles = Array.from(files);
+      }
 
-            loadAudioFile(file) {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = async (e) => {
-                        try {
-                            const audioBuffer = await this.audioContext.decodeAudioData(e.target.result);
-                            resolve(audioBuffer);
-                        } catch (error) {
-                            reject(error);
-                        }
-                    };
-                    reader.onerror = reject;
-                    reader.readAsArrayBuffer(file);
-                });
-            }
+      async processFiles() {
+        if (!this.audioFiles.length) return;
+        document.getElementById('loadingDiv').style.display = 'block';
+        this.analysisData = [];  // reset from previous runs
 
-            async extractPitchData(audioBuffer) {
-                const channelData = audioBuffer.getChannelData(0);
-                const sampleRate = audioBuffer.sampleRate;
-                const windowSize = 2048; // smaller window for smoother curves
-                const hopSize = 512;     // finer time steps
-                const pitchData = [];
-                
-                // Sliding window analysis
-                for (let i = 0; i + windowSize < channelData.length; i += hopSize) {
-                    const window = channelData.slice(i, i + windowSize);
-                    // Apply Hamming window
-                    for (let j = 0; j < window.length; j++) {
-                        window[j] *= 0.54 - 0.46 * Math.cos(2 * Math.PI * j / (window.length - 1));
-                    }
-                    
-                    const pitch = this.detectPitchYIN(window, sampleRate);
-                    const timeStamp = i / sampleRate;
-                    
-                    pitchData.push({
-                        time: timeStamp,
-                        frequency: pitch,
-                        note: this.frequencyToNote(pitch)
-                    });
-                }
-
-                return pitchData;
-            }
-
-            detectPitchYIN(buffer, sampleRate) {
-                const threshold = 0.10;  // more sensitive for voice fundamentals
-                const minPeriod = Math.floor(sampleRate / 800); // 800 Hz max
-                const maxPeriod = Math.floor(sampleRate / 80);  // 80 Hz min
-                
-                if (maxPeriod >= buffer.length) return 0;
-
-                // Calculate difference function
-                const d = new Float32Array(maxPeriod + 1);
-                for (let tau = 1; tau <= maxPeriod; tau++) {
-                    let sum = 0;
-                    for (let j = 0; j < buffer.length - tau; j++) {
-                        const diff = buffer[j] - buffer[j + tau];
-                        sum += diff * diff;
-                    }
-                    d[tau] = sum;
-                }
-
-                // Calculate cumulative mean normalized difference
-                const cmnd = new Float32Array(maxPeriod + 1);
-                cmnd[0] = 1;
-                let runningSum = 0;
-                
-                for (let tau = 1; tau <= maxPeriod; tau++) {
-                    runningSum += d[tau];
-                    if (runningSum === 0) {
-                        cmnd[tau] = 1;
-                    } else {
-                        cmnd[tau] = d[tau] * tau / runningSum;
-                    }
-                }
-
-                // Search for the first dip below the threshold
-                for (let tau = minPeriod; tau <= maxPeriod; tau++) {
-                    if (cmnd[tau] < threshold) {
-                        while (tau + 1 <= maxPeriod && cmnd[tau + 1] < cmnd[tau]) {
-                            tau++;
-                        }
-
-                        // Parabolic interpolation for better accuracy
-                        const betterTau = tau;
-                        const x0 = cmnd[betterTau - 1];
-                        const x1 = cmnd[betterTau];
-                        const x2 = cmnd[betterTau + 1];
-                        const a = (x0 + x2 - 2 * x1) / 2;
-                        const b = (x2 - x0) / 2;
-                        
-                        if (a !== 0) {
-                            const tauFraction = -b / (2 * a);
-                            if (Math.abs(tauFraction) < 1) {
-                                return sampleRate / (tau + tauFraction);
-                            }
-                        }
-                        return sampleRate / tau;
-                    }
-                }
-                
-                return 0; // No pitch detected
-            }
-
-            frequencyToNote(freq) {
-                if (!freq) return null;
-                const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-                const noteNum = 12 * (Math.log(freq / 440) / Math.log(2)) + 69;
-                const rounded = Math.round(noteNum);
-                const octave = Math.floor(rounded / 12) - 1;
-                return notes[(rounded % 12 + 12) % 12] + octave;
-            }
-
-            displayResults() {
-                document.getElementById('loadingDiv').style.display = 'none';
-                document.getElementById('resultsDiv').style.display = 'block';
-
-                this.setupCanvas();
-                this.drawPitchGraph();
-                this.displayStatistics();
-                this.createLegend();
-
-                if (this.analysisData.length > 1) {
-                    document.getElementById('canvasContainer').classList.add('comparison-mode');
-                }
-            }
-
-            setupCanvas() {
-                const container = document.getElementById('canvasContainer');
-                const canvas = document.getElementById('pitchCanvas');
-                canvas.width = container.clientWidth;
-                canvas.height = container.clientHeight;
-                this.ctx = canvas.getContext('2d');
-            }
-
-            drawPitchGraph() {
-                const canvas = document.getElementById('pitchCanvas');
-                const width = canvas.width;
-                const height = canvas.height;
-
-                // Find global min/max for scaling, filtering out zero values
-                let minFreq = Infinity, maxFreq = 0, maxTime = 0;
-                this.analysisData.forEach(data => {
-                    data.pitchData.forEach(p => {
-                        if (p.frequency > 0) {
-                            minFreq = Math.min(minFreq, p.frequency);
-                            maxFreq = Math.max(maxFreq, p.frequency);
-                        }
-                        maxTime = Math.max(maxTime, p.time);
-                    });
-                });
-
-                if (minFreq === Infinity) minFreq = 0;
-                if (maxFreq === 0) maxFreq = this.audioContext.sampleRate / 2;
-
-                this.drawGrid(width, height, maxTime, minFreq, maxFreq);
-            }
-
-            drawGrid(width, height, maxTime, minFreq, maxFreq) {
-                this.ctx.strokeStyle = '#e8e8e8';
-                this.ctx.lineWidth = 1;
-                this.ctx.font = '14px Arial';
-                this.ctx.fillStyle = '#555';
-
-                const padding = 80;
-                const graphWidth = width - padding * 2;
-                const graphHeight = height - padding * 2;
-
-                // Clear previous drawings
-                this.ctx.clearRect(0, 0, width, height);
-                this.ctx.fillStyle = 'white';
-                this.ctx.fillRect(0, 0, width, height);
-
-                // draw gender zones
-                const zones = [
-                  { label: 'Male (85–155 Hz)',        min: 85,  max: 155, color: 'rgba(0,123,255,0.1)' },
-                  { label: 'Androgynous (155–180 Hz)', min: 155, max: 180, color: 'rgba(123,0,255,0.1)' },
-                  { label: 'Female (180–255 Hz)',      min: 180, max: 255, color: 'rgba(255,0,123,0.1)' }
-                ];
-                zones.forEach(z => {
-                  const y1 = padding + (1 - (z.max - minFreq)/(maxFreq - minFreq))*graphHeight;
-                  const y2 = padding + (1 - (z.min - minFreq)/(maxFreq - minFreq))*graphHeight;
-                  this.ctx.fillStyle = z.color;
-                  this.ctx.fillRect(padding, y1, graphWidth, y2 - y1);
-                  this.ctx.fillStyle = '#333';
-                  this.ctx.textAlign = 'left';
-                  this.ctx.fillText(z.label, padding + 5, y1 + 15);
-                });
-
-                // Vertical grid lines (time)
-                const timeSteps = Math.min(12, Math.ceil(maxTime));
-                for (let i = 0; i <= timeSteps; i++) {
-                    const x = padding + (i / timeSteps) * graphWidth;
-                    const time = (i / timeSteps) * maxTime;
-                    
-                    this.ctx.strokeStyle = i % 2 === 0 ? '#d0d0d0' : '#e8e8e8';
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(x, padding);
-                    this.ctx.lineTo(x, height - padding);
-                    this.ctx.stroke();
-
-                    if (i % 2 === 0) {
-                        this.ctx.fillStyle = '#555';
-                        this.ctx.textAlign = 'center';
-                        this.ctx.fillText(time.toFixed(1) + 's', x, height - padding + 25);
-                    }
-                }
-
-                // Horizontal grid lines (frequency)
-                const freqSteps = 8;
-                Array.from({ length: freqSteps + 1 }, (_, i) => {
-                    const y = padding + (1 - i / freqSteps) * graphHeight;
-                    const freq = minFreq + (i / freqSteps) * (maxFreq - minFreq);
-                    
-                    this.ctx.strokeStyle = i % 2 === 0 ? '#d0d0d0' : '#e8e8e8';
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(padding, y);
-                    this.ctx.lineTo(width - padding, y);
-                    this.ctx.stroke();
-
-                    this.ctx.fillStyle = '#555';
-                    this.ctx.textAlign = 'right';
-                    this.ctx.fillText(freq.toFixed(0) + ' Hz', padding - 10, y + 5);
-                    
-                    // Add note names for common frequencies
-                    const note = this.frequencyToNote(freq);
-                    if (note && freq % 100 === 0) {
-                        this.ctx.fillStyle = '#667eea';
-                        this.ctx.textAlign = 'left';
-                        this.ctx.fillText(note, padding + 10, y - 5);
-                    }
-                });
-
-                // Main axes
-                this.ctx.strokeStyle = '#333';
-                this.ctx.lineWidth = 2;
-                // Time axis
-                this.ctx.beginPath();
-                this.ctx.moveTo(padding, height - padding);
-                this.ctx.lineTo(width - padding, height - padding);
-                this.ctx.stroke();
-                // Frequency axis
-                this.ctx.beginPath();
-                this.ctx.moveTo(padding, padding);
-                this.ctx.lineTo(padding, height - padding);
-                this.ctx.stroke();
-            }
-
-            drawPitchLine(data, width, height, maxTime, minFreq, maxFreq) {
-                const padding = 80;
-                const graphWidth = width - padding * 2;
-                const graphHeight = height - padding * 2;
-
-                this.ctx.strokeStyle = data.color;
-                this.ctx.lineWidth = 2;
-                this.ctx.beginPath();
-
-                data.pitchData.forEach((p, idx) => {
-                    if (p.frequency) {
-                        const x = padding + (p.time / maxTime) * graphWidth;
-                        const y = padding + (1 - (p.frequency - minFreq) / (maxFreq - minFreq)) * graphHeight;
-                        if (idx === 0) {
-                            this.ctx.moveTo(x, y);
-                        } else {
-                            this.ctx.lineTo(x, y);
-                        }
-                    }
-                });
-
-                this.ctx.stroke();
-            }
-
-            calculateStatistics(pitchData) {
-                const freqs = pitchData.map(p => p.frequency).filter(f => f > 0);
-                const sum = freqs.reduce((a, b) => a + b, 0);
-                const avg = freqs.length ? sum / freqs.length : 0;
-                const min = freqs.length ? Math.min(...freqs) : 0;
-                const max = freqs.length ? Math.max(...freqs) : 0;
-                const durations = pitchData.map(p => p.time);
-                const duration = durations.length ? durations[durations.length - 1] : 0;
-                const stability = avg ? (1 - (max - min) / avg) * 100 : 0;
-                return { average: avg, min, max, duration, stability };
-            }
-
-            displayStatistics() {
-                const statsContainer = document.getElementById('statsContainer');
-                statsContainer.innerHTML = '';
-                this.analysisData.forEach((data, index) => {
-                    const stats = this.calculateStatistics(data.pitchData);
-                    const filePrefix = this.analysisData.length > 1 ? `File ${index + 1} - ` : '';
-
-                    const statsCards = [
-                        { title: `${filePrefix}Average Pitch`, value: stats.average.toFixed(1), unit: 'Hz' },
-                        { title: `${filePrefix}Min Pitch`, value: stats.min.toFixed(1), unit: 'Hz' },
-                        { title: `${filePrefix}Max Pitch`, value: stats.max.toFixed(1), unit: 'Hz' },
-                        { title: `${filePrefix}Range`, value: (stats.max - stats.min).toFixed(1), unit: 'Hz' },
-                        { title: `${filePrefix}Stability`, value: stats.stability.toFixed(1), unit: '%' },
-                        { title: `${filePrefix}Duration`, value: stats.duration.toFixed(1), unit: 's' }
-                    ];
-
-                    statsCards.forEach(stat => {
-                        const card = document.createElement('div');
-                        card.className = 'stat-card';
-                        card.innerHTML = `<strong>${stat.title}</strong><br>${stat.value} ${stat.unit}`;
-                        statsContainer.appendChild(card);
-                    });
-                });
-            }
-
-            createLegend() {
-                const legendContainer = document.getElementById('legendContainer');
-                legendContainer.innerHTML = '';
-                this.analysisData.forEach(data => {
-                    const item = document.createElement('div');
-                    item.className = 'legend-item';
-                    item.innerHTML = `<div class="legend-color" style="background:${data.color}"></div>${data.filename}`;
-                    legendContainer.appendChild(item);
-                });
-            }
-
-            exportData() {
-                let csv = 'filename,time,frequency,note\n';
-                this.analysisData.forEach(data => {
-                    data.pitchData.forEach(p => {
-                        csv += `${data.filename},${p.time.toFixed(4)},${p.frequency.toFixed(2)},${p.note || ''}\n`;
-                    });
-                });
-                const blob = new Blob([csv], { type: 'text/csv' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'pitch_analysis.csv';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            }
+        for (let i=0; i<this.audioFiles.length; i++) {
+          try {
+            const buf = await this.loadAudioFile(this.audioFiles[i]);
+            const pitchData = await this.extractPitchData(buf);
+            this.analysisData.push({
+              filename: this.audioFiles[i].name,
+              pitchData,
+              color: i===0?'#667eea':'#ff6b6b'
+            });
+          } catch {
+            alert(`Failed to process ${this.audioFiles[i].name}`);
+          }
         }
 
-        const analyzer = new PitchAnalyzer();
-        document.getElementById('audioInput').addEventListener('change', (e) => {
-            analyzer.addFiles(e.target.files);
+        document.getElementById('loadingDiv').style.display = 'none';
+        this.displayResults();
+      }
+
+      loadAudioFile(file) {
+        return new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onload = async e => {
+            try {
+              const buf = await this.audioContext.decodeAudioData(e.target.result);
+              res(buf);
+            } catch(err){ rej(err); }
+          };
+          r.onerror = rej;
+          r.readAsArrayBuffer(file);
+        });
+      }
+
+      async extractPitchData(audioBuffer) {
+        const data = audioBuffer.getChannelData(0);
+        const sr = audioBuffer.sampleRate;
+        const win=2048, hop=512;  // smoother curves
+        const out = [];
+
+        for (let i=0; i+win<data.length; i+=hop) {
+          const slice = data.slice(i,i+win);
+          // Hamming
+          for (let j=0; j<slice.length; j++)
+            slice[j] *= 0.54 - 0.46*Math.cos(2*Math.PI*j/(slice.length-1));
+
+          const freq = this.detectPitchYIN(slice, sr);
+          out.push({ time:i/sr, frequency:freq });
+        }
+        return out;
+      }
+
+      detectPitchYIN(buf, sr) {
+        const thresh = 0.10;
+        const minP = Math.floor(sr/800), maxP = Math.floor(sr/80);
+        const d = new Float32Array(maxP+1), cmnd = new Float32Array(maxP+1);
+        for (let t=1; t<=maxP; t++) {
+          let sum=0;
+          for (let j=0; j<buf.length-t; j++){
+            const diff=buf[j]-buf[j+t];
+            sum+=diff*diff;
+          }
+          d[t]=sum;
+        }
+        cmnd[0]=1;
+        let run=0;
+        for (let t=1; t<=maxP; t++){
+          run+=d[t];
+          cmnd[t]= run? d[t]*t/run : 1;
+        }
+        for (let t=minP; t<=maxP; t++){
+          if (cmnd[t]<thresh){
+            while (t+1<=maxP && cmnd[t+1]<cmnd[t]) t++;
+            // parabolic refine
+            const x0=cmnd[t-1], x1=cmnd[t], x2=cmnd[t+1];
+            const a=(x0+x2-2*x1)/2, b=(x2-x0)/2;
+            const tau = a? t + (-b/(2*a)) : t;
+            return sr/tau;
+          }
+        }
+        return 0;
+      }
+
+      displayResults() {
+        document.getElementById('resultsDiv').style.display = 'block';
+        this.setupCanvas();
+        this.drawPitchGraph();
+        this.displayStatistics();
+        this.createLegend();
+      }
+
+      setupCanvas() {
+        const c = document.getElementById('pitchCanvas');
+        c.width = c.parentElement.clientWidth;
+        c.height = c.parentElement.clientHeight;
+        this.ctx = c.getContext('2d');
+      }
+
+      drawPitchGraph() {
+        const c = document.getElementById('pitchCanvas');
+        const W = c.width, H = c.height;
+        const maxTime = Math.max(...this.analysisData.flatMap(d=>d.pitchData.map(p=>p.time)));
+        // fixed axis to show full bands
+        const minF = 50, maxF = 300;
+        this.drawGrid(W,H,maxTime,minF,maxF);
+        this.analysisData.forEach(d=> this.drawPitchLine(d,W,H,maxTime,minF,maxF));
+      }
+
+      drawGrid(W,H,T, minF, maxF) {
+        const ctx = this.ctx, pad=60;
+        const gw=W-2*pad, gh=H-2*pad;
+        // background
+        ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H);
+
+        // gender zones
+        [
+          {lbl:'Male (85–155Hz)',min:85,max:155,col:'rgba(0,123,255,0.1)'},
+          {lbl:'Andro (155–180Hz)',min:155,max:180,col:'rgba(123,0,255,0.1)'},
+          {lbl:'Female (180–255Hz)',min:180,max:255,col:'rgba(255,0,123,0.1)'}
+        ].forEach(z=>{
+          const y1=pad+((maxF-z.max)/(maxF-minF))*gh;
+          const y2=pad+((maxF-z.min)/(maxF-minF))*gh;
+          ctx.fillStyle=z.col;
+          ctx.fillRect(pad,y1,gw,y2-y1);
+          ctx.fillStyle='#333';
+          ctx.textAlign='left';
+          ctx.fillText(z.lbl,pad+5,y1+15);
         });
 
-        function startAnalysis() {
-            analyzer.processFiles();
+        // axes & grid
+        ctx.strokeStyle='#ccc'; ctx.lineWidth=1; ctx.font='12px Arial'; ctx.fillStyle='#555';
+        // time
+        for(let i=0;i<=5;i++){
+          const x=pad+(i/5)*gw;
+          ctx.beginPath(); ctx.moveTo(x,pad); ctx.lineTo(x,H-pad); ctx.stroke();
+          ctx.textAlign='center'; ctx.fillText((T*(i/5)).toFixed(1)+'s',x,H-pad+20);
         }
+        // freq
+        for(let i=0;i<=5;i++){
+          const y=pad+(i/5)*gh;
+          const f=maxF-(i/5)*(maxF-minF);
+          ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-pad,y); ctx.stroke();
+          ctx.textAlign='right'; ctx.fillText(f.toFixed(0)+'Hz',pad-10,y+4);
+        }
+        // main axes thicker
+        ctx.strokeStyle='#333'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.moveTo(pad,H-pad); ctx.lineTo(W-pad,H-pad); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(pad,pad); ctx.lineTo(pad,H-pad); ctx.stroke();
+      }
 
-        function playPause() {
-            // Simple implementation - in a full version, you'd implement actual audio playback
-            alert('Audio playback feature would be implemented here with Web Audio API');
-        }
+      drawPitchLine(data,W,H,T,minF,maxF) {
+        const ctx=this.ctx, pad=60, gw=W-2*pad, gh=H-2*pad;
+        ctx.strokeStyle=data.color; ctx.lineWidth=2; ctx.beginPath();
+        data.pitchData.forEach((p,i)=>{
+          if(p.frequency>0){
+            const x=pad+(p.time/T)*gw;
+            const y=pad+((maxF-p.frequency)/(maxF-minF))*gh;
+            i? ctx.lineTo(x,y) : ctx.moveTo(x,y);
+          }
+        });
+        ctx.stroke();
+      }
 
-        function exportData() {
-            analyzer.exportData();
-        }
-    </script>
+      calculateStatistics(pd) {
+        const freqs=pd.map(p=>p.frequency).filter(f=>f>0);
+        const sum=freqs.reduce((a,b)=>a+b,0), avg=freqs.length?sum/freqs.length:0;
+        const mn=freqs.length?Math.min(...freqs):0, mx=freqs.length?Math.max(...freqs):0;
+        return { average:avg, min:mn, max:mx };
+      }
+
+      displayStatistics() {
+        const c=document.getElementById('statsContainer');
+        c.innerHTML='';
+        this.analysisData.forEach(d=>{
+          const s=this.calculateStatistics(d.pitchData);
+          const grp=document.createElement('div');
+          grp.className='stats-group';
+          const h3=document.createElement('h3');
+          h3.textContent=d.filename;
+          grp.appendChild(h3);
+          const cards=document.createElement('div');
+          cards.className='stat-cards';
+          [
+            {t:'Average Pitch',v:s.average.toFixed(1)+' Hz'},
+            {t:'Min Pitch',v:s.min.toFixed(1)+' Hz'},
+            {t:'Max Pitch',v:s.max.toFixed(1)+' Hz'},
+            {t:'Range',v:(s.max-s.min).toFixed(1)+' Hz'}
+          ].forEach(m=>{
+            const div=document.createElement('div');
+            div.className='stat-card';
+            div.innerHTML=`<strong>${m.t}</strong><br>${m.v}`;
+            cards.appendChild(div);
+          });
+          grp.appendChild(cards);
+          c.appendChild(grp);
+        });
+      }
+
+      createLegend() {
+        const lc=document.getElementById('legendContainer');
+        lc.innerHTML='';
+        this.analysisData.forEach(d=>{
+          const item=document.createElement('div');
+          item.className='legend-item';
+          item.innerHTML=`<div class="legend-color" style="background:${d.color}"></div>${d.filename}`;
+          lc.appendChild(item);
+        });
+      }
+
+      exportData() {
+        let csv='filename,time,frequency\n';
+        this.analysisData.forEach(d=>{
+          d.pitchData.forEach(p=>{
+            csv+=`${d.filename},${p.time.toFixed(3)},${p.frequency.toFixed(2)}\n`;
+          });
+        });
+        const blob=new Blob([csv],{type:'text/csv'});
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a');
+        a.href=url; a.download='pitch_analysis.csv';
+        document.body.appendChild(a); a.click(); a.remove();
+      }
+    }
+
+    const analyzer = new PitchAnalyzer();
+    document.getElementById('audioInput').addEventListener('change', e=>{
+      analyzer.addFiles(e.target.files);
+    });
+    function startAnalysis(){ analyzer.processFiles(); }
+    function playPause(){
+      alert('Audio playback would be implemented here.');
+    }
+    function exportData(){ analyzer.exportData(); }
+  </script>
 </body>
 </html>
