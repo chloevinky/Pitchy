@@ -1013,11 +1013,16 @@
                 document.getElementById('loadingDiv').style.display = 'none';
                 document.getElementById('resultsDiv').style.display = 'block';
 
+                // Remove dynamically-inserted blocks from any previous run so
+                // they don't accumulate or linger across file changes.
+                const resultsDiv = document.getElementById('resultsDiv');
+                resultsDiv.querySelectorAll('.comparison-stats, .legend').forEach(el => el.remove());
+
                 this.setupCanvas();
                 this.drawPitchGraph();
                 this.displayStatistics();
                 this.renderVowelSpace();
-                
+
                 // Show legend if comparing files
                 if (this.analysisData.length > 1) {
                     this.createLegend();
@@ -1453,53 +1458,70 @@
                 canvas.width = rect.width * dpr;
                 canvas.height = rect.height * dpr;
                 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-                const W = rect.width, H = rect.height, pad = 55;
+                // Asymmetric padding: extra room at the bottom for the tick
+                // numbers + axis title (two separate rows) and on the left for
+                // the rotated F1 title.
+                const W = rect.width, H = rect.height;
+                const padL = 60, padR = 30, padT = 30, padB = 56;
+                const plotW = W - padL - padR;
+                const plotH = H - padT - padB;
 
                 // Conventional vowel chart: F2 on x (high on the LEFT), F1 on y
                 // (low at the TOP). Higher formants => upper-left.
                 const f2min = 800, f2max = 2800, f1min = 250, f1max = 950;
-                const xOf = f2 => pad + (f2max - f2) / (f2max - f2min) * (W - 2 * pad);
-                const yOf = f1 => pad + (f1 - f1min) / (f1max - f1min) * (H - 2 * pad);
+                const xOf = f2 => padL + (f2max - f2) / (f2max - f2min) * plotW;
+                const yOf = f1 => padT + (f1 - f1min) / (f1max - f1min) * plotH;
 
                 ctx.fillStyle = 'white';
                 ctx.fillRect(0, 0, W, H);
 
                 // Faint "brighter resonance" highlight toward upper-left.
                 ctx.fillStyle = 'rgba(231, 76, 60, 0.07)';
-                ctx.fillRect(pad, pad, (W - 2 * pad) * 0.5, (H - 2 * pad) * 0.5);
-                ctx.fillStyle = 'rgba(231, 76, 60, 0.55)';
+                ctx.fillRect(padL, padT, plotW * 0.5, plotH * 0.5);
+                ctx.fillStyle = 'rgba(231, 76, 60, 0.6)';
                 ctx.font = '11px Arial';
-                ctx.fillText('brighter / more feminine-typical', pad + 8, pad + 16);
+                ctx.fillText('brighter / more feminine-typical', padL + 8, padT + 16);
 
-                // Grid + labels
+                // Grid + tick labels
                 ctx.strokeStyle = '#f0f0f0';
-                ctx.fillStyle = '#888';
                 ctx.lineWidth = 1;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'alphabetic';
+                ctx.fillStyle = '#888';
+                ctx.font = '11px Arial';
                 for (let f2 = 1000; f2 <= 2800; f2 += 400) {
                     const x = xOf(f2);
-                    ctx.beginPath(); ctx.moveTo(x, pad); ctx.lineTo(x, H - pad); ctx.stroke();
-                    ctx.fillText(f2 + '', x - 12, H - pad + 16);
+                    ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, H - padB); ctx.stroke();
+                    ctx.fillText(f2 + '', x, H - padB + 15); // tick row
                 }
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
                 for (let f1 = 300; f1 <= 900; f1 += 200) {
                     const y = yOf(f1);
-                    ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y); ctx.stroke();
-                    ctx.fillText(f1 + '', 8, y + 4);
+                    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+                    ctx.fillText(f1 + '', padL - 8, y);
                 }
 
                 // Axes
                 ctx.strokeStyle = '#333';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.moveTo(pad, pad); ctx.lineTo(pad, H - pad); ctx.lineTo(W - pad, H - pad);
+                ctx.moveTo(padL, padT); ctx.lineTo(padL, H - padB); ctx.lineTo(W - padR, H - padB);
                 ctx.stroke();
+
+                // Axis titles (on their own rows, centered — no overlap)
                 ctx.fillStyle = '#333';
                 ctx.font = 'bold 12px Arial';
-                ctx.fillText('F2 (Hz) — higher to the left', W - 220, H - pad + 16);
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'alphabetic';
+                ctx.fillText('F2 (Hz) — higher to the left', padL + plotW / 2, H - 6);
                 ctx.save();
-                ctx.translate(16, pad + 60); ctx.rotate(-Math.PI / 2);
-                ctx.fillText('F1 (Hz)', 0, 0);
+                ctx.translate(14, padT + plotH / 2); ctx.rotate(-Math.PI / 2);
+                ctx.fillText('F1 (Hz) — higher at the top', 0, 0);
                 ctx.restore();
 
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
                 const plot = (p, radius, withLabel) => {
                     const cf1 = Math.max(f1min, Math.min(f1max, p.f1));
                     const cf2 = Math.max(f2min, Math.min(f2max, p.f2));
@@ -1511,7 +1533,7 @@
                     if (withLabel && p.label) {
                         ctx.fillStyle = '#333';
                         ctx.font = 'bold 12px Arial';
-                        ctx.fillText(p.label, x + radius + 4, y + 4);
+                        ctx.fillText(p.label, x + radius + 4, y);
                     }
                 };
 
@@ -1625,7 +1647,9 @@
 
                 const range1 = this.getDominantRange(avg1);
                 const range2 = this.getDominantRange(avg2);
-                const rangeChange = range1 !== range2 ? `${range1.toUpperCase()} → ${range2.toUpperCase()}` : 'Same range';
+                const rangeChange = range1 !== range2
+                    ? `${range1.toUpperCase()} → ${range2.toUpperCase()}`
+                    : `Same (${range1.toUpperCase()})`;
 
                 const res1 = this.analysisData[0].resonance || 0;
                 const res2 = this.analysisData[1].resonance || 0;
@@ -1635,49 +1659,42 @@
                 const fm2 = this.analysisData[1].formants && this.analysisData[1].formants.sustained;
                 const f1Diff = (fm1 && fm2 && fm1.f1 && fm2.f1) ? fm2.f1 - fm1.f1 : null;
                 const f2Diff = (fm1 && fm2 && fm1.f2 && fm2.f2) ? fm2.f2 - fm1.f2 : null;
-                const fmtDiff = (d) => d === null ? '–' : (d > 0 ? '+' : '') + Math.round(d) + ' Hz';
-                const fmtCls = (d) => d === null ? '' : (d > 0 ? 'improvement' : 'regression');
-                const formantItems = (f1Diff === null && f2Diff === null) ? '' : `
+
+                // Neutral, directional change formatting. File order is chosen
+                // by the user, so we don't label changes "improvement"/"regression"
+                // — we just show the direction of change from File 1 to File 2.
+                const arrow = (d) => d > 0 ? '▲' : (d < 0 ? '▼' : '–');
+                const signed = (d, unit) => (d > 0 ? '+' : '') + Math.round(d) + ' ' + unit;
+                const changeItem = (label, d, unit, suffix = '') => d === null ? '' : `
                             <div class="comparison-item">
-                                <div class="comparison-value ${fmtCls(f1Diff)}">${fmtDiff(f1Diff)}</div>
-                                <div class="comparison-label">F1 Change (est.)</div>
-                            </div>
-                            <div class="comparison-item">
-                                <div class="comparison-value ${fmtCls(f2Diff)}">${fmtDiff(f2Diff)}</div>
-                                <div class="comparison-label">F2 Change (est.)</div>
+                                <div class="comparison-value">${arrow(d)} ${signed(d, unit)}</div>
+                                <div class="comparison-label">${label}${suffix}</div>
                             </div>`;
 
                 const comparisonHTML = `
                     <div class="comparison-stats">
                         <h3>📊 Comparison Analysis</h3>
+                        <p class="stat-note" style="text-align:left; margin-bottom:12px;">
+                            Change from <strong>File 1</strong> to <strong>File 2</strong>
+                            (${this.analysisData[0].filename} → ${this.analysisData[1].filename}).
+                            Arrows show direction only — neither direction is inherently "better".
+                        </p>
                         <div class="comparison-grid">
                             <div class="comparison-item">
-                                <div class="comparison-value ${difference > 0 ? 'improvement' : 'regression'}">
-                                    ${difference > 0 ? '+' : ''}${difference.toFixed(1)} Hz
-                                </div>
-                                <div class="comparison-label">Pitch Change</div>
+                                <div class="comparison-value">${avg1.toFixed(0)} → ${avg2.toFixed(0)} Hz</div>
+                                <div class="comparison-label">Average Pitch (File 1 → 2)</div>
                             </div>
                             <div class="comparison-item">
-                                <div class="comparison-value ${percentChange > 0 ? 'improvement' : 'regression'}">
-                                    ${percentChange > 0 ? '+' : ''}${percentChange.toFixed(1)}%
-                                </div>
-                                <div class="comparison-label">Percent Change</div>
+                                <div class="comparison-value">${arrow(difference)} ${signed(difference, 'Hz')} (${percentChange > 0 ? '+' : ''}${percentChange.toFixed(1)}%)</div>
+                                <div class="comparison-label">Pitch Change</div>
                             </div>
                             <div class="comparison-item">
                                 <div class="comparison-value">${rangeChange}</div>
                                 <div class="comparison-label">Voice Range</div>
                             </div>
-                            <div class="comparison-item">
-                                <div class="comparison-value">${Math.abs(difference).toFixed(1)} Hz</div>
-                                <div class="comparison-label">Difference</div>
-                            </div>
-                            <div class="comparison-item">
-                                <div class="comparison-value ${resDiff === null ? '' : (resDiff > 0 ? 'improvement' : 'regression')}">
-                                    ${resDiff === null ? '–' : (resDiff > 0 ? '+' : '') + Math.round(resDiff) + ' Hz'}
-                                </div>
-                                <div class="comparison-label">Resonance Change (est.)</div>
-                            </div>
-                            ${formantItems}
+                            ${changeItem('Resonance Change', resDiff, 'Hz', ' (est.)')}
+                            ${changeItem('F1 Change', f1Diff, 'Hz', ' (est.)')}
+                            ${changeItem('F2 Change', f2Diff, 'Hz', ' (est.)')}
                         </div>
                     </div>
                 `;
@@ -1829,6 +1846,14 @@
             document.getElementById('analyzeBtn').disabled = true;
             document.getElementById('analysisSection').style.display = 'none';
             document.getElementById('fileInput').value = '';
+
+            // Tear down stale result DOM so a fresh upload starts clean.
+            const resultsDiv = document.getElementById('resultsDiv');
+            resultsDiv.querySelectorAll('.comparison-stats, .legend').forEach(el => el.remove());
+            document.getElementById('statsGrid').innerHTML = '';
+            document.getElementById('vowelContainer').style.display = 'none';
+            const summaryEl = document.getElementById('a11ySummary');
+            if (summaryEl) summaryEl.textContent = '';
         }
 
         function analyzeAudio() {
