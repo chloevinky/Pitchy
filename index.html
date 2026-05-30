@@ -367,6 +367,112 @@
         .regression {
             color: #dc3545;
         }
+
+        .safety-note {
+            background: linear-gradient(135deg, #fde2e4 0%, #fad2cf 100%);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border-left: 5px solid #e74c3c;
+            color: #7d2b25;
+            line-height: 1.6;
+        }
+
+        .safety-note h3 {
+            color: #c0392b;
+            margin-bottom: 8px;
+        }
+
+        .stat-note {
+            grid-column: 1 / -1;
+            font-size: 0.85rem;
+            color: #666;
+            font-style: italic;
+            text-align: center;
+            padding: 4px 0;
+        }
+
+        .live-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            text-align: center;
+        }
+
+        .live-section h3 {
+            margin-bottom: 15px;
+            color: #6b73ff;
+        }
+
+        .live-pitch {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .live-resonance {
+            color: #666;
+            margin-top: 8px;
+            font-size: 0.95rem;
+        }
+
+        .live-meter {
+            position: relative;
+            height: 26px;
+            border-radius: 13px;
+            margin: 20px auto 5px;
+            max-width: 600px;
+            background: linear-gradient(90deg,
+                #3498db 0%, #3498db 35.5%,
+                #f39c12 35.5%, #f39c12 48.3%,
+                #e74c3c 48.3%, #e74c3c 100%);
+            box-shadow: inset 0 1px 4px rgba(0,0,0,0.2);
+        }
+
+        .live-marker {
+            position: absolute;
+            top: -4px;
+            width: 6px;
+            height: 34px;
+            background: #222;
+            border-radius: 3px;
+            transform: translateX(-50%);
+            transition: left 0.06s linear;
+            display: none;
+        }
+
+        .live-meter-labels {
+            display: flex;
+            justify-content: space-between;
+            max-width: 600px;
+            margin: 0 auto;
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .live-hint {
+            color: #888;
+            font-size: 0.9rem;
+            margin-top: 12px;
+        }
+
+        .btn.active {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
     </style>
 </head>
 <body>
@@ -381,17 +487,27 @@
             <div class="range-grid">
                 <div class="range-card male">
                     <div class="range-title">💙 Male Range</div>
-                    <div class="range-freq">85-180 Hz</div>
+                    <div class="range-freq">85-165 Hz</div>
                 </div>
                 <div class="range-card androgynous">
                     <div class="range-title">💛 Androgynous Range</div>
-                    <div class="range-freq">165-265 Hz</div>
+                    <div class="range-freq">165-196 Hz</div>
                 </div>
                 <div class="range-card female">
                     <div class="range-title">❤️ Female Range</div>
-                    <div class="range-freq">165-300 Hz</div>
+                    <div class="range-freq">196-300 Hz</div>
                 </div>
             </div>
+        </div>
+
+        <div class="safety-note">
+            <h3>💗 Take care of your voice</h3>
+            Never push or strain to force a higher pitch — a feminine voice comes
+            far more from <strong>resonance and ease</strong> than from height alone.
+            If you feel strain, tension, pain, or hoarseness, stop and rest. For
+            personalised, safe guidance consider working with a gender-affirming
+            speech-language pathologist (SLP) or voice coach. This tool is an
+            educational aid, not medical advice.
         </div>
 
         <div class="upload-section">
@@ -408,9 +524,26 @@
             <div id="fileList" style="margin-top: 15px;"></div>
             
             <div style="text-align: center; margin-top: 15px;">
-                <button class="btn" onclick="clearFiles()">Clear All</button>
-                <button class="btn" onclick="analyzeAudio()" id="analyzeBtn" disabled>Analyze Voice</button>
+                <button class="btn" onclick="clearFiles()" aria-label="Clear all uploaded files">Clear All</button>
+                <button class="btn" onclick="analyzeAudio()" id="analyzeBtn" aria-label="Analyze uploaded voice recordings" disabled>Analyze Voice</button>
+                <button class="btn" onclick="toggleLiveMode()" id="liveBtn" aria-label="Toggle real-time microphone feedback">🎙️ Live Mode</button>
             </div>
+        </div>
+
+        <div class="live-section" id="liveSection" style="display: none;">
+            <h3>🎙️ Live Voice Feedback</h3>
+            <div id="liveReadout" aria-live="polite" aria-atomic="true">
+                <div class="live-pitch" id="livePitch">– Hz</div>
+                <div class="current-range" id="liveRange">—</div>
+                <div class="live-resonance" id="liveResonance">Resonance: – Hz</div>
+            </div>
+            <div class="live-meter" aria-hidden="true">
+                <div class="live-marker" id="liveMarker"></div>
+            </div>
+            <div class="live-meter-labels" aria-hidden="true">
+                <span>80 Hz</span><span>165</span><span>196</span><span>320 Hz</span>
+            </div>
+            <p class="live-hint">Speak or hum naturally and watch the marker. Aim for ease, not strain.</p>
         </div>
 
         <div class="analysis-section" id="analysisSection">
@@ -421,17 +554,20 @@
 
             <div id="resultsDiv" style="display: none;">
                 <div class="canvas-container">
-                    <canvas id="pitchCanvas"></canvas>
+                    <canvas id="pitchCanvas" role="img" aria-label="Pitch contour graph. Analyze a recording to see results."></canvas>
                 </div>
+
+                <div id="a11ySummary" class="visually-hidden" aria-live="polite"></div>
 
                 <div class="stats" id="statsGrid"></div>
 
                 <div class="training-tips">
                     <h3>💡 Voice Training Tips</h3>
                     <ul>
-                        <li>Practice vocal exercises daily to expand your range</li>
+                        <li>Prioritise resonance over raw pitch — bright, forward resonance reads more feminine than a high pitch alone</li>
+                        <li>Practice gently and daily; never strain to reach a target</li>
                         <li>Focus on resonance placement - chest vs head voice</li>
-                        <li>Work with a voice coach for personalized guidance</li>
+                        <li>Work with a gender-affirming voice coach or SLP for personalized guidance</li>
                         <li>Record yourself regularly to track progress</li>
                         <li>Remember: pitch is just one aspect of gender expression</li>
                     </ul>
@@ -449,13 +585,18 @@
                 this.canvas = null;
                 this.ctx = null;
                 
-                // Voice range definitions
+                // Voice range definitions (disjoint, adjacent bands).
+                // Boundaries are a tunable approximation of typical speaking
+                // fundamentals; resonance matters as much as pitch.
                 this.ranges = {
-                    male: { min: 85, max: 180, color: '#3498db' },
-                    androgynous: { min: 165, max: 265, color: '#f39c12' },
-                    female: { min: 165, max: 300, color: '#e74c3c' }
+                    male: { min: 85, max: 165, color: '#3498db' },
+                    androgynous: { min: 165, max: 196, color: '#f39c12' },
+                    female: { min: 196, max: 300, color: '#e74c3c' }
                 };
-                
+
+                // Live (microphone) mode state
+                this.liveActive = false;
+
                 this.initializeEventListeners();
             }
 
@@ -538,11 +679,12 @@
 
                     for (let i = 0; i < this.audioFiles.length; i++) {
                         const audioBuffer = await this.loadAudioFile(this.audioFiles[i]);
-                        const pitchData = await this.extractPitchData(audioBuffer);
-                        
+                        const result = await this.extractPitchData(audioBuffer);
+
                         this.analysisData.push({
                             filename: this.audioFiles[i].name,
-                            pitchData: pitchData,
+                            pitchData: result.pitchData,
+                            resonance: result.resonance,
                             color: i === 0 ? '#6b73ff' : '#e74c3c'
                         });
                     }
@@ -576,63 +718,168 @@
                 const windowSize = 2048;
                 const hopSize = 1024; // Reduced data points
                 const pitchData = [];
+                let resonanceSum = 0;
+                let resonanceCount = 0;
 
                 for (let i = 0; i < channelData.length - windowSize; i += hopSize) {
                     const window = channelData.slice(i, i + windowSize);
                     const pitch = this.detectPitch(window, sampleRate);
                     const timeStamp = i / sampleRate;
-                    
+
                     // Only add valid pitch data
                     if (pitch > 0 && pitch >= 80 && pitch <= 400) {
                         pitchData.push({
                             time: timeStamp,
                             frequency: pitch
                         });
+
+                        // Accumulate a resonance/brightness estimate over voiced frames
+                        const centroid = this.spectralCentroid(window, sampleRate);
+                        if (centroid > 0) {
+                            resonanceSum += centroid;
+                            resonanceCount++;
+                        }
                     }
                 }
 
                 // Smooth and downsample the data
-                return this.smoothPitchData(pitchData);
+                return {
+                    pitchData: this.smoothPitchData(pitchData),
+                    resonance: resonanceCount > 0 ? resonanceSum / resonanceCount : 0
+                };
             }
 
             detectPitch(buffer, sampleRate) {
-                // Improved autocorrelation pitch detection with better accuracy
+                // Normalized autocorrelation pitch detection.
+                // Note: no window function is applied here — windowing is an
+                // FFT/spectral-leakage technique and would taper the signal
+                // edges, biasing low-frequency (long-period) detection in a
+                // time-domain autocorrelation.
                 const minFreq = 80;
                 const maxFreq = 400;
                 const minPeriod = Math.floor(sampleRate / maxFreq);
                 const maxPeriod = Math.floor(sampleRate / minFreq);
+                const n = buffer.length;
 
-                // Apply window function to reduce spectral leakage
-                const windowedBuffer = buffer.map((sample, i) => {
-                    const windowValue = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (buffer.length - 1));
-                    return sample * windowValue;
-                });
+                // Require a minimum signal level so silence/noise isn't reported
+                let rms = 0;
+                for (let i = 0; i < n; i++) rms += buffer[i] * buffer[i];
+                rms = Math.sqrt(rms / n);
+                if (rms < 0.01) return 0;
 
-                let bestCorrelation = 0;
-                let bestPeriod = 0;
-                const threshold = 0.3; // Minimum correlation threshold
-
+                // Normalized autocorrelation r[period], a true correlation
+                // coefficient in [-1, 1] (divided by sqrt(E1 * E2) rather than
+                // the energy of one segment only).
+                const r = new Float32Array(maxPeriod + 2);
                 for (let period = minPeriod; period <= maxPeriod; period++) {
-                    let correlation = 0;
-                    let energy = 0;
-                    
-                    for (let i = 0; i < windowedBuffer.length - period; i++) {
-                        correlation += windowedBuffer[i] * windowedBuffer[i + period];
-                        energy += windowedBuffer[i] * windowedBuffer[i];
+                    let corr = 0, e1 = 0, e2 = 0;
+                    const limit = n - period;
+                    for (let i = 0; i < limit; i++) {
+                        const a = buffer[i];
+                        const b = buffer[i + period];
+                        corr += a * b;
+                        e1 += a * a;
+                        e2 += b * b;
                     }
-                    
-                    // Normalize correlation
-                    if (energy > 0) {
-                        correlation = correlation / energy;
-                    }
-                    
-                    if (correlation > bestCorrelation && correlation > threshold) {
-                        bestCorrelation = correlation;
-                        bestPeriod = period;
-                    }
+                    const norm = Math.sqrt(e1 * e2);
+                    r[period] = norm > 0 ? corr / norm : 0;
                 }
 
-                return bestPeriod > 0 && bestCorrelation > threshold ? sampleRate / bestPeriod : 0;
+                // Tallest peak sets the clarity bar.
+                let maxR = 0;
+                for (let period = minPeriod; period <= maxPeriod; period++) {
+                    if (r[period] > maxR) maxR = r[period];
+                }
+                const clarityThreshold = 0.5;
+                if (maxR < clarityThreshold) return 0;
+
+                // Pick the FIRST local peak that is tall enough relative to the
+                // global max. Choosing the earliest strong peak (not the global
+                // maximum) avoids octave errors where a multiple of the true
+                // period correlates marginally higher.
+                const peakThreshold = 0.9 * maxR;
+                let bestPeriod = 0;
+                for (let period = minPeriod + 1; period < maxPeriod; period++) {
+                    if (r[period] >= peakThreshold &&
+                        r[period] >= r[period - 1] &&
+                        r[period] >= r[period + 1]) {
+                        bestPeriod = period;
+                        break;
+                    }
+                }
+                if (bestPeriod === 0) return 0;
+
+                // Parabolic interpolation around the integer peak for sub-sample
+                // period resolution (sharpens accuracy at higher frequencies).
+                const y0 = r[bestPeriod - 1];
+                const y1 = r[bestPeriod];
+                const y2 = r[bestPeriod + 1];
+                const denom = y0 - 2 * y1 + y2;
+                const offset = denom !== 0 ? 0.5 * (y0 - y2) / denom : 0;
+                const refinedPeriod = bestPeriod + offset;
+
+                return refinedPeriod > 0 ? sampleRate / refinedPeriod : 0;
+            }
+
+            // In-place iterative radix-2 Cooley–Tukey FFT (length must be a
+            // power of two). Used for the resonance/brightness estimate.
+            fft(re, im) {
+                const n = re.length;
+                for (let i = 1, j = 0; i < n; i++) {
+                    let bit = n >> 1;
+                    for (; j & bit; bit >>= 1) j ^= bit;
+                    j ^= bit;
+                    if (i < j) {
+                        const tr = re[i]; re[i] = re[j]; re[j] = tr;
+                        const ti = im[i]; im[i] = im[j]; im[j] = ti;
+                    }
+                }
+                for (let len = 2; len <= n; len <<= 1) {
+                    const ang = -2 * Math.PI / len;
+                    const wpr = Math.cos(ang), wpi = Math.sin(ang);
+                    const half = len >> 1;
+                    for (let i = 0; i < n; i += len) {
+                        let wr = 1, wi = 0;
+                        for (let k = 0; k < half; k++) {
+                            const ar = re[i + k + half], ai = im[i + k + half];
+                            const vr = ar * wr - ai * wi;
+                            const vi = ar * wi + ai * wr;
+                            const ur = re[i + k], ui = im[i + k];
+                            re[i + k] = ur + vr;
+                            im[i + k] = ui + vi;
+                            re[i + k + half] = ur - vr;
+                            im[i + k + half] = ui - vi;
+                            const nwr = wr * wpr - wi * wpi;
+                            wi = wr * wpi + wi * wpr;
+                            wr = nwr;
+                        }
+                    }
+                }
+            }
+
+            // Spectral centroid (Hz) over ~200–5000 Hz as an approximate
+            // "brightness"/resonance proxy. Not clinical formant analysis.
+            spectralCentroid(buffer, sampleRate) {
+                const n = buffer.length;
+                const re = new Float32Array(n);
+                const im = new Float32Array(n);
+                for (let i = 0; i < n; i++) {
+                    // Hann window IS appropriate here — this is spectral analysis.
+                    const w = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (n - 1));
+                    re[i] = buffer[i] * w;
+                }
+                this.fft(re, im);
+
+                const lowBin = Math.max(1, Math.ceil(200 * n / sampleRate));
+                const highBin = Math.min(n >> 1, Math.floor(5000 * n / sampleRate));
+                let weighted = 0, total = 0;
+                for (let bin = lowBin; bin <= highBin; bin++) {
+                    const mag = Math.sqrt(re[bin] * re[bin] + im[bin] * im[bin]);
+                    const freq = bin * sampleRate / n;
+                    weighted += freq * mag;
+                    total += mag;
+                }
+                return total > 0 ? weighted / total : 0;
             }
 
             smoothPitchData(pitchData) {
@@ -644,7 +891,7 @@
                 // Apply moving average for smoothing
                 const smoothed = this.movingAverage(medianFiltered, 3);
                 
-                // Downsample for better visualization (keep every 3rd point)
+                // Downsample for better visualization (keep every 2nd point)
                 const downsampled = smoothed.filter((_, index) => index % 2 === 0);
                 
                 return downsampled;
@@ -827,25 +1074,25 @@
                 }
 
                 // Frequency grid (horizontal lines) - more strategic placement
-                const frequencies = [80, 120, 165, 180, 200, 250, 300];
+                const frequencies = [80, 120, 165, 196, 250, 300];
                 frequencies.forEach(freq => {
                     const y = padding + (1 - (freq - 80) / (320 - 80)) * graphHeight;
-                    
+
                     // Different line styles for range boundaries
-                    if (freq === 165 || freq === 180) {
+                    if (freq === 165 || freq === 196) {
                         this.ctx.strokeStyle = '#d0d0d0';
                         this.ctx.lineWidth = 1.5;
                     } else {
                         this.ctx.strokeStyle = '#f0f0f0';
                         this.ctx.lineWidth = 1;
                     }
-                    
+
                     this.ctx.beginPath();
                     this.ctx.moveTo(padding, y);
                     this.ctx.lineTo(width - padding, y);
                     this.ctx.stroke();
 
-                    this.ctx.fillStyle = freq === 165 || freq === 180 ? '#666' : '#888';
+                    this.ctx.fillStyle = freq === 165 || freq === 196 ? '#666' : '#888';
                     this.ctx.fillText(freq + ' Hz', 8, y - 3);
                 });
 
@@ -930,11 +1177,12 @@
             displayStatistics() {
                 const statsGrid = document.getElementById('statsGrid');
                 statsGrid.innerHTML = '';
+                const summaryParts = [];
 
                 // Display stats for each file
                 this.analysisData.forEach((data, index) => {
                     const validPitches = data.pitchData.filter(p => p.frequency > 0 && p.frequency >= 80 && p.frequency <= 320);
-                    
+
                     if (validPitches.length === 0) return;
 
                     const frequencies = validPitches.map(p => p.frequency);
@@ -943,6 +1191,7 @@
                     const maxPitch = Math.max(...frequencies);
                     const range = maxPitch - minPitch;
                     const dominantRange = this.getDominantRange(avgPitch);
+                    const resonance = data.resonance || 0;
 
                     const filePrefix = this.analysisData.length > 1 ? `File ${index + 1} - ` : '';
 
@@ -964,10 +1213,36 @@
                             <div class="stat-value">${range.toFixed(1)}</div>
                             <div class="stat-label">${filePrefix}Pitch Range (Hz)</div>
                         </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${resonance > 0 ? Math.round(resonance) : '–'}</div>
+                            <div class="stat-label">${filePrefix}Resonance ~Hz (est.)</div>
+                        </div>
                     `;
 
                     statsGrid.innerHTML += statsHTML;
+
+                    const filename = this.analysisData.length > 1 ? `File ${index + 1}` : 'Recording';
+                    summaryParts.push(`${filename}: average pitch ${avgPitch.toFixed(0)} hertz, ` +
+                        `ranging ${minPitch.toFixed(0)} to ${maxPitch.toFixed(0)} hertz, ` +
+                        `classified ${dominantRange}` +
+                        (resonance > 0 ? `, estimated resonance ${Math.round(resonance)} hertz` : '') + '.');
                 });
+
+                // Note that resonance is an approximation
+                statsGrid.innerHTML += `
+                    <div class="stat-note">
+                        Resonance is an approximate brightness estimate (spectral centroid),
+                        not clinical formant analysis — use it as a rough guide alongside pitch.
+                    </div>
+                `;
+
+                // Update accessible text alternatives for the canvas graph
+                const summaryText = summaryParts.join(' ');
+                const summaryEl = document.getElementById('a11ySummary');
+                if (summaryEl) summaryEl.textContent = 'Analysis results. ' + summaryText;
+                const canvas = document.getElementById('pitchCanvas');
+                if (canvas) canvas.setAttribute('aria-label',
+                    'Pitch contour graph over time. ' + summaryText);
 
                 // Add comparison section if we have 2 files
                 if (this.analysisData.length === 2) {
@@ -989,6 +1264,10 @@
                 const range1 = this.getDominantRange(avg1);
                 const range2 = this.getDominantRange(avg2);
                 const rangeChange = range1 !== range2 ? `${range1.toUpperCase()} → ${range2.toUpperCase()}` : 'Same range';
+
+                const res1 = this.analysisData[0].resonance || 0;
+                const res2 = this.analysisData[1].resonance || 0;
+                const resDiff = (res1 > 0 && res2 > 0) ? res2 - res1 : null;
 
                 const comparisonHTML = `
                     <div class="comparison-stats">
@@ -1014,6 +1293,12 @@
                                 <div class="comparison-value">${Math.abs(difference).toFixed(1)} Hz</div>
                                 <div class="comparison-label">Difference</div>
                             </div>
+                            <div class="comparison-item">
+                                <div class="comparison-value ${resDiff === null ? '' : (resDiff > 0 ? 'improvement' : 'regression')}">
+                                    ${resDiff === null ? '–' : (resDiff > 0 ? '+' : '') + Math.round(resDiff) + ' Hz'}
+                                </div>
+                                <div class="comparison-label">Resonance Change (est.)</div>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -1024,17 +1309,107 @@
             }
 
             getDominantRange(avgPitch) {
-                if (avgPitch >= this.ranges.male.min && avgPitch <= this.ranges.male.max) {
-                    if (avgPitch >= this.ranges.female.min) return 'androgynous';
-                    return 'male';
+                // Disjoint, adjacent bands: male < androgynous < female
+                if (avgPitch < this.ranges.androgynous.min) return 'male';
+                if (avgPitch < this.ranges.female.min) return 'androgynous';
+                return 'female';
+            }
+
+            // ---- Real-time microphone (Live) mode ----
+
+            async startLiveMode() {
+                try {
+                    this.liveStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                } catch (err) {
+                    alert('Microphone access is needed for Live Mode. Please allow mic access and try again.');
+                    return false;
                 }
-                if (avgPitch >= this.ranges.female.min && avgPitch <= this.ranges.female.max) {
-                    return 'female';
+
+                if (!this.audioContext) {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 }
-                if (avgPitch >= this.ranges.androgynous.min && avgPitch <= this.ranges.androgynous.max) {
-                    return 'androgynous';
+                if (this.audioContext.state === 'suspended') {
+                    await this.audioContext.resume();
                 }
-                return avgPitch < 165 ? 'male' : 'female';
+
+                this.liveSource = this.audioContext.createMediaStreamSource(this.liveStream);
+                this.liveAnalyser = this.audioContext.createAnalyser();
+                this.liveAnalyser.fftSize = 2048;
+                this.liveSource.connect(this.liveAnalyser);
+
+                this.liveBuffer = new Float32Array(this.liveAnalyser.fftSize);
+                this.liveFreqBuffer = new Float32Array(this.liveAnalyser.frequencyBinCount);
+                this.liveActive = true;
+                this.liveLoop();
+                return true;
+            }
+
+            liveLoop() {
+                if (!this.liveActive) return;
+
+                this.liveAnalyser.getFloatTimeDomainData(this.liveBuffer);
+                const pitch = this.detectPitch(this.liveBuffer, this.audioContext.sampleRate);
+
+                const pitchEl = document.getElementById('livePitch');
+                const rangeEl = document.getElementById('liveRange');
+                const marker = document.getElementById('liveMarker');
+
+                if (pitch > 0) {
+                    pitchEl.textContent = pitch.toFixed(1) + ' Hz';
+                    const range = this.getDominantRange(pitch);
+                    rangeEl.textContent = range.toUpperCase();
+                    rangeEl.className = 'current-range ' + range;
+
+                    const minFreq = 80, maxFreq = 320;
+                    const pct = Math.max(0, Math.min(1, (pitch - minFreq) / (maxFreq - minFreq)));
+                    marker.style.left = (pct * 100) + '%';
+                    marker.style.display = 'block';
+                } else {
+                    pitchEl.textContent = '– Hz';
+                    rangeEl.textContent = '—';
+                    rangeEl.className = 'current-range';
+                    marker.style.display = 'none';
+                }
+
+                // Live resonance estimate from the analyser's frequency data
+                this.liveAnalyser.getFloatFrequencyData(this.liveFreqBuffer);
+                const centroid = this.liveCentroid();
+                document.getElementById('liveResonance').textContent =
+                    'Resonance: ' + (centroid > 0 ? Math.round(centroid) + ' Hz (est.)' : '– Hz');
+
+                this.liveRAF = requestAnimationFrame(() => this.liveLoop());
+            }
+
+            liveCentroid() {
+                const data = this.liveFreqBuffer; // magnitudes in dB
+                const sr = this.audioContext.sampleRate;
+                const n = this.liveAnalyser.fftSize;
+                const lowBin = Math.max(1, Math.ceil(200 * n / sr));
+                const highBin = Math.min(data.length - 1, Math.floor(5000 * n / sr));
+                let weighted = 0, total = 0;
+                for (let bin = lowBin; bin <= highBin; bin++) {
+                    const mag = Math.pow(10, data[bin] / 20); // dB -> linear
+                    const freq = bin * sr / n;
+                    weighted += freq * mag;
+                    total += mag;
+                }
+                return total > 0 ? weighted / total : 0;
+            }
+
+            stopLiveMode() {
+                this.liveActive = false;
+                if (this.liveRAF) {
+                    cancelAnimationFrame(this.liveRAF);
+                    this.liveRAF = null;
+                }
+                if (this.liveSource) {
+                    this.liveSource.disconnect();
+                    this.liveSource = null;
+                }
+                if (this.liveStream) {
+                    this.liveStream.getTracks().forEach(t => t.stop());
+                    this.liveStream = null;
+                }
             }
         }
 
@@ -1051,7 +1426,28 @@
         }
 
         function analyzeAudio() {
+            // Live and file analysis shouldn't run at the same time
+            if (analyzer.liveActive) toggleLiveMode();
             analyzer.analyzeAudio();
+        }
+
+        async function toggleLiveMode() {
+            const liveSection = document.getElementById('liveSection');
+            const liveBtn = document.getElementById('liveBtn');
+
+            if (analyzer.liveActive) {
+                analyzer.stopLiveMode();
+                liveSection.style.display = 'none';
+                liveBtn.textContent = '🎙️ Live Mode';
+                liveBtn.classList.remove('active');
+            } else {
+                const ok = await analyzer.startLiveMode();
+                if (ok) {
+                    liveSection.style.display = 'block';
+                    liveBtn.textContent = '⏹ Stop Live Mode';
+                    liveBtn.classList.add('active');
+                }
+            }
         }
     </script>
 </body>
