@@ -897,78 +897,82 @@
             }
 
             detectPitch(buffer, sampleRate) {
-                // Normalized autocorrelation pitch detection.
-                // Note: no window function is applied here — windowing is an
-                // FFT/spectral-leakage technique and would taper the signal
-                // edges, biasing low-frequency (long-period) detection in a
-                // time-domain autocorrelation.
-                const minFreq = 80;
-                const maxFreq = 400;
-                const minPeriod = Math.floor(sampleRate / maxFreq);
-                const maxPeriod = Math.floor(sampleRate / minFreq);
+                // YIN pitch detector (de Cheveigne & Kawahara, 2002). The
+                // cumulative-mean-normalized difference function plus an
+                // absolute threshold makes this strongly resistant to the
+                // octave errors (picking a sub-multiple of the true period)
+                // that plague plain autocorrelation when the fundamental is
+                // weak - common on phone/laptop mics and exactly what made a
+                // clear male voice read as female.
+                const minFreq = 70;
+                const maxFreq = 500;
                 const n = buffer.length;
+                const maxTau = Math.min(Math.floor(sampleRate / minFreq), Math.floor(n / 2));
+                const minTau = Math.max(2, Math.floor(sampleRate / maxFreq));
 
-                // Require a minimum signal level so silence/noise isn't reported
+                // Voicing/level gate: ignore silence and quiet background noise.
                 let rms = 0;
                 for (let i = 0; i < n; i++) rms += buffer[i] * buffer[i];
                 rms = Math.sqrt(rms / n);
                 if (rms < 0.01) return 0;
 
-                // Normalized autocorrelation r[period], a true correlation
-                // coefficient in [-1, 1] (divided by sqrt(E1 * E2) rather than
-                // the energy of one segment only).
-                const r = new Float32Array(maxPeriod + 2);
-                for (let period = minPeriod; period <= maxPeriod; period++) {
-                    let corr = 0, e1 = 0, e2 = 0;
-                    const limit = n - period;
+                // 1) Difference function d(tau).
+                const d = new Float32Array(maxTau + 1);
+                for (let tau = minTau; tau <= maxTau; tau++) {
+                    let sum = 0;
+                    const limit = n - maxTau; // fixed window so all taus are comparable
                     for (let i = 0; i < limit; i++) {
-                        const a = buffer[i];
-                        const b = buffer[i + period];
-                        corr += a * b;
-                        e1 += a * a;
-                        e2 += b * b;
+                        const diff = buffer[i] - buffer[i + tau];
+                        sum += diff * diff;
                     }
-                    const norm = Math.sqrt(e1 * e2);
-                    r[period] = norm > 0 ? corr / norm : 0;
+                    d[tau] = sum;
                 }
 
-                // Tallest peak sets the clarity bar.
-                let maxR = 0;
-                for (let period = minPeriod; period <= maxPeriod; period++) {
-                    if (r[period] > maxR) maxR = r[period];
+                // 2) Cumulative mean normalized difference d'(tau).
+                const cmnd = new Float32Array(maxTau + 1);
+                cmnd[minTau] = 1;
+                let running = 0;
+                for (let tau = minTau; tau <= maxTau; tau++) {
+                    running += d[tau];
+                    cmnd[tau] = running > 0 ? d[tau] * (tau - minTau + 1) / running : 1;
                 }
-                const clarityThreshold = 0.5;
-                if (maxR < clarityThreshold) return 0;
 
-                // Pick the FIRST local peak that is tall enough relative to the
-                // global max. Choosing the earliest strong peak (not the global
-                // maximum) avoids octave errors where a multiple of the true
-                // period correlates marginally higher.
-                const peakThreshold = 0.9 * maxR;
-                let bestPeriod = 0;
-                for (let period = minPeriod + 1; period < maxPeriod; period++) {
-                    if (r[period] >= peakThreshold &&
-                        r[period] >= r[period - 1] &&
-                        r[period] >= r[period + 1]) {
-                        bestPeriod = period;
+                // 3) Absolute threshold: take the FIRST tau that dips below the
+                // threshold and reaches its local minimum (the true period),
+                // rather than the global minimum (which is prone to octave-down
+                // errors). This is the core of YIN's octave robustness.
+                const threshold = 0.15;
+                let tau = -1;
+                for (let t = minTau + 1; t < maxTau; t++) {
+                    if (cmnd[t] < threshold) {
+                        while (t + 1 < maxTau && cmnd[t + 1] < cmnd[t]) t++;
+                        tau = t;
                         break;
                     }
                 }
-                if (bestPeriod === 0) return 0;
+                // Fallback: no dip under threshold -> use the global minimum,
+                // but only accept it if it's reasonably periodic.
+                if (tau === -1) {
+                    let best = minTau, bestVal = cmnd[minTau];
+                    for (let t = minTau + 1; t <= maxTau; t++) {
+                        if (cmnd[t] < bestVal) { bestVal = cmnd[t]; best = t; }
+                    }
+                    if (bestVal > 0.3) return 0; // not periodic enough -> unvoiced
+                    tau = best;
+                }
 
-                // Parabolic interpolation around the integer peak for sub-sample
-                // period resolution (sharpens accuracy at higher frequencies).
-                const y0 = r[bestPeriod - 1];
-                const y1 = r[bestPeriod];
-                const y2 = r[bestPeriod + 1];
-                const denom = y0 - 2 * y1 + y2;
-                const offset = denom !== 0 ? 0.5 * (y0 - y2) / denom : 0;
-                const refinedPeriod = bestPeriod + offset;
+                // 4) Parabolic interpolation around the chosen dip for sub-sample
+                // period resolution.
+                const x0 = tau > minTau ? cmnd[tau - 1] : cmnd[tau];
+                const x2 = tau + 1 <= maxTau ? cmnd[tau + 1] : cmnd[tau];
+                const denom = x0 + x2 - 2 * cmnd[tau];
+                const betterTau = denom !== 0 ? tau + (x0 - x2) / (2 * denom) : tau;
 
-                return refinedPeriod > 0 ? sampleRate / refinedPeriod : 0;
+                const freq = sampleRate / betterTau;
+                return (freq >= minFreq && freq <= maxFreq) ? freq : 0;
             }
 
-            // In-place iterative radix-2 Cooley–Tukey FFT (length must be a
+            // In-place iterative radix-2 Cooley-Tukey FFT (length must be a
             // power of two). Used for the resonance/brightness estimate.
             fft(re, im) {
                 const n = re.length;
@@ -1909,8 +1913,11 @@
                     return false;
                 }
 
-                // Use a low sample rate when formant tracking is on so the LPC
-                // order stays small enough to resolve F1/F2 cleanly.
+                // Request a low sample rate so LPC order stays small, but do
+                // NOT rely on it: browsers frequently ignore the request and
+                // run at 44100/48000 Hz. Live frames are resampled to ~11 kHz
+                // before LPC (see updateLiveFormants), so formant tracking works
+                // at whatever rate the context actually gives us.
                 const AC = window.AudioContext || window.webkitAudioContext;
                 this.audioContext = null;
                 if (this.formantEnabled) {
@@ -1919,7 +1926,7 @@
                 if (!this.audioContext) this.audioContext = new AC();
                 if (this.audioContext.state === 'suspended') await this.audioContext.resume();
 
-                this.liveFormantOK = this.formantEnabled && this.audioContext.sampleRate <= 16000;
+                this.liveFormantOK = this.formantEnabled;
                 const wrap = document.getElementById('liveVowelWrap');
                 const f1f2 = document.getElementById('liveF1F2');
                 const stab = document.getElementById('liveStability');
@@ -2010,13 +2017,41 @@
                 this.liveRAF = requestAnimationFrame(() => this.liveLoop());
             }
 
+            // Linear-decimate a time-domain frame from srcRate to ~targetRate.
+            // Cheap enough to run per live frame; the slight anti-aliasing
+            // imperfection is acceptable for formant estimation, and decimating
+            // is what lets LPC order 12 resolve F1/F2 regardless of the context
+            // sample rate.
+            decimateFrame(src, srcRate, targetRate, outLen) {
+                const ratio = srcRate / targetRate;
+                const out = new Float32Array(outLen);
+                // Take the most recent (outLen * ratio) input samples.
+                const span = Math.floor(outLen * ratio);
+                const start = Math.max(0, src.length - span);
+                for (let i = 0; i < outLen; i++) {
+                    const pos = start + i * ratio;
+                    const i0 = Math.floor(pos);
+                    const frac = pos - i0;
+                    const s0 = src[i0] || 0;
+                    const s1 = src[i0 + 1] !== undefined ? src[i0 + 1] : s0;
+                    out[i] = s0 + (s1 - s0) * frac;
+                }
+                return out;
+            }
+
             updateLiveFormants(voiced) {
                 const el = document.getElementById('liveF1F2');
                 const stab = document.getElementById('liveStability');
                 let f1 = null, f2 = null;
                 if (voiced) {
-                    const fs = this.audioContext.sampleRate;
-                    const frame = this.liveBuffer.subarray(this.liveBuffer.length - 512);
+                    const targetRate = 11025;
+                    const srcRate = this.audioContext.sampleRate;
+                    // Resample to ~11 kHz so order-12 LPC can resolve formants;
+                    // 512 samples at 11 kHz is ~46 ms, a good analysis window.
+                    const frame = srcRate > targetRate * 1.2
+                        ? this.decimateFrame(this.liveBuffer, srcRate, targetRate, 512)
+                        : this.liveBuffer.subarray(this.liveBuffer.length - 512);
+                    const fs = srcRate > targetRate * 1.2 ? targetRate : srcRate;
                     ({ f1, f2 } = this.assignFormants(this.lpcFormants(frame, fs, 12)));
                 }
 
