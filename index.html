@@ -5,718 +5,549 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voice Training Pitch Analyzer</title>
     <style>
+        /* Bauhaus-inspired, flat earth-tone system. Square corners, no
+           gradients, no purple. Lucida Sans Unicode throughout. */
+        :root {
+            --paper: #E7E0D2;       /* page background, warm sand */
+            --card: #F3EEE3;        /* raised surface */
+            --card-2: #EDE6D7;      /* inset surface */
+            --ink: #2A2620;         /* near-black brown, primary text */
+            --ink-soft: #5C5446;    /* secondary text */
+            --ink-mute: #8A8070;    /* tertiary text */
+            --line: #CBBFA8;        /* hairlines, dividers */
+            --brick: #B5532A;       /* terracotta, primary accent */
+            --brick-dark: #99461F;
+            --ochre: #CE9B3F;       /* mustard */
+            --olive: #6E7A45;       /* clay green */
+            --slate: #5B6B7A;       /* muted blue-slate */
+            --teal: #436B5E;        /* deep green, second series */
+            --shadow: 0 1px 2px rgba(42,38,32,0.10), 0 3px 8px rgba(42,38,32,0.06);
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            border-radius: 0;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #6b73ff 0%, #9b59b6 100%);
+            font-family: "Lucida Sans Unicode", "Lucida Grande", "Lucida Sans", sans-serif;
+            background: var(--paper);
             min-height: 100vh;
-            color: #333;
+            color: var(--ink);
+            line-height: 1.55;
         }
 
         .container {
             max-width: 1000px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 40px 24px 64px;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            color: white;
+        /* ---- Header ---- */
+        .header { margin-bottom: 36px; }
+
+        .geo-motif { display: flex; gap: 8px; margin-bottom: 18px; }
+        .geo { width: 22px; height: 22px; display: block; }
+        .geo.sq { background: var(--brick); }
+        .geo.ci { background: var(--slate); border-radius: 50%; }
+        .geo.tr {
+            width: 0; height: 0; background: none;
+            border-left: 11px solid transparent;
+            border-right: 11px solid transparent;
+            border-bottom: 22px solid var(--ochre);
         }
 
         .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            font-size: 2.4rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            line-height: 1.05;
+            color: var(--ink);
         }
 
         .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
+            margin-top: 10px;
+            font-size: 1.02rem;
+            color: var(--ink-soft);
+            max-width: 60ch;
         }
 
-        .upload-section {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 25px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        /* ---- Section heads with custom icons ---- */
+        .section-head {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
         }
+        .section-head h2, .section-head h3 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+            color: var(--ink);
+        }
+        .icon {
+            width: 22px; height: 22px;
+            flex: none;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.75;
+            stroke-linecap: square;
+            stroke-linejoin: miter;
+        }
+        .icon-brick { color: var(--brick); }
+        .icon-slate { color: var(--slate); }
+        .icon-olive { color: var(--olive); }
+        .icon-ochre { color: var(--ochre); }
 
-        .upload-area {
-            border: 3px dashed #6b73ff;
-            border-radius: 12px;
-            padding: 30px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
+        /* ---- Panels ---- */
+        .upload-section,
+        .analysis-section,
+        .live-section {
+            background: var(--card);
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow);
+            padding: 28px;
+            margin-bottom: 24px;
         }
-
-        .upload-area:hover {
-            border-color: #9b59b6;
-            background-color: #f8f9ff;
-        }
-
-        .upload-area.dragover {
-            border-color: #9b59b6;
-            background-color: #f0f2ff;
-            transform: scale(1.02);
-        }
-
-        .file-input {
-            display: none;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #6b73ff 0%, #9b59b6 100%);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: transform 0.2s;
-            margin: 10px 5px;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .analysis-section {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-            display: none;
-        }
+        .analysis-section { display: none; }
 
         .voice-ranges {
-            background: linear-gradient(135deg, #f8f9ff 0%, #e8ebff 100%);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-left: 5px solid #6b73ff;
+            background: var(--card-2);
+            border: 1px solid var(--line);
+            padding: 24px;
+            margin-bottom: 24px;
         }
 
         .range-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
+            gap: 16px;
+            margin-top: 4px;
         }
-
         .range-card {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-top: 6px solid var(--ink);
+            padding: 16px;
         }
-
-        .range-card.male {
-            border-top: 4px solid #3498db;
-        }
-
-        .range-card.androgynous {
-            border-top: 4px solid #f39c12;
-        }
-
-        .range-card.female {
-            border-top: 4px solid #e74c3c;
-        }
-
+        .range-card.male { border-top-color: var(--slate); }
+        .range-card.androgynous { border-top-color: var(--ochre); }
+        .range-card.female { border-top-color: var(--brick); }
         .range-title {
-            font-weight: bold;
-            font-size: 1.1rem;
-            margin-bottom: 5px;
+            display: flex; align-items: center; gap: 8px;
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 6px;
         }
+        .range-title .swatch { width: 12px; height: 12px; flex: none; }
+        .range-card.male .swatch { background: var(--slate); }
+        .range-card.androgynous .swatch { background: var(--ochre); }
+        .range-card.female .swatch { background: var(--brick); }
+        .range-freq { color: var(--ink-soft); font-size: 0.92rem; }
 
-        .range-freq {
-            color: #666;
-            font-size: 0.9rem;
+        /* ---- Safety note ---- */
+        .safety-note {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-left: 6px solid var(--brick);
+            padding: 22px 24px;
+            margin-bottom: 24px;
+            color: var(--ink-soft);
         }
+        .safety-note .section-head { margin-bottom: 8px; }
+        .safety-note strong { color: var(--ink); }
 
-        .canvas-container {
-            background: #f8f9ff;
-            border-radius: 12px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-
-        #pitchCanvas {
-            width: 100%;
-            height: 500px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .stat-card {
-            background: linear-gradient(135deg, #f8f9ff 0%, #e8ebff 100%);
-            padding: 20px;
-            border-radius: 12px;
+        /* ---- Upload ---- */
+        .upload-area {
+            border: 2px dashed var(--line);
+            background: var(--card-2);
+            padding: 36px 24px;
             text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
         }
+        .upload-area:hover { border-color: var(--brick); background: #E9E1D0; }
+        .upload-area.dragover { border-color: var(--brick); background: #E4DAC6; }
+        .upload-area .upload-glyph { color: var(--brick); margin-bottom: 12px; }
+        .upload-area h3 { font-size: 1.05rem; margin-bottom: 6px; }
+        .upload-area p { color: var(--ink-soft); }
+        .file-input { display: none; }
 
-        .stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            color: #666;
-            font-size: 0.9rem;
+        /* ---- Buttons ---- */
+        .controls { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+        .btn {
+            font-family: inherit;
+            font-size: 0.82rem;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.05em;
+            background: transparent;
+            color: var(--ink);
+            border: 1.5px solid var(--ink);
+            padding: 11px 20px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
         }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
+        .btn .icon { width: 18px; height: 18px; }
+        .btn:hover { background: var(--ink); color: var(--paper); }
+        .btn:disabled { opacity: 0.38; cursor: not-allowed; }
+        .btn:disabled:hover { background: transparent; color: var(--ink); }
+        .btn-primary {
+            background: var(--brick);
+            border-color: var(--brick);
+            color: var(--paper);
         }
+        .btn-primary:hover { background: var(--brick-dark); border-color: var(--brick-dark); color: var(--paper); }
+        .btn.active { background: var(--brick); border-color: var(--brick); color: var(--paper); }
 
-        .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #6b73ff;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
+        .formant-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 16px;
+            font-size: 0.9rem;
+            color: var(--ink-soft);
+            cursor: pointer;
+            user-select: none;
         }
+        .formant-toggle input { width: 16px; height: 16px; accent-color: var(--brick); }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .training-tips {
-            background: linear-gradient(135deg, #fff9c4 0%, #f7dc6f 100%);
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 20px;
-            border-left: 5px solid #f39c12;
-        }
-
-        .training-tips h3 {
-            color: #d68910;
-            margin-bottom: 10px;
-        }
-
-        .training-tips ul {
-            color: #7d6608;
-            line-height: 1.6;
-        }
-
-        .current-range {
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-weight: bold;
-            color: white;
-            margin-top: 10px;
-        }
-
-        .current-range.male {
-            background: #3498db;
-        }
-
-        .current-range.androgynous {
-            background: #f39c12;
-        }
-
-        .current-range.female {
-            background: #e74c3c;
-        }
-
-        .file-list {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            margin-top: 15px;
-        }
-
+        /* ---- File list ---- */
+        .file-list { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 16px; }
         .file-item {
-            background: #f8f9ff;
-            padding: 15px;
-            border-radius: 8px;
-            border-left: 4px solid #6b73ff;
+            background: var(--card-2);
+            border: 1px solid var(--line);
+            border-left: 5px solid var(--brick);
+            padding: 14px 16px;
             flex: 1;
             min-width: 200px;
             position: relative;
+            font-size: 0.92rem;
         }
-
-        .file-item.file1 {
-            border-left-color: #6b73ff;
-        }
-
-        .file-item.file2 {
-            border-left-color: #e74c3c;
-        }
-
+        .file-item.file1 { border-left-color: var(--brick); }
+        .file-item.file2 { border-left-color: var(--teal); }
+        .file-item small { color: var(--ink-mute); }
         .remove-file {
             position: absolute;
-            top: 5px;
-            right: 5px;
-            background: #ff6b6b;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
+            top: 8px; right: 8px;
+            width: 22px; height: 22px;
+            background: transparent;
+            color: var(--ink-mute);
+            border: 1px solid var(--line);
             cursor: pointer;
-            font-size: 12px;
+            font-size: 14px;
             line-height: 1;
         }
+        .remove-file:hover { background: var(--brick); color: var(--paper); border-color: var(--brick); }
 
-        .legend {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
+        /* ---- Canvas ---- */
+        .canvas-container {
+            background: var(--card-2);
+            border: 1px solid var(--line);
+            padding: 18px;
+            margin: 22px 0;
         }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            background: rgba(255,255,255,0.9);
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        #pitchCanvas, #vowelCanvas, #liveVowelCanvas {
+            width: 100%;
+            height: 480px;
+            background: #FBF8F1;
+            border: 1px solid var(--line);
+            display: block;
         }
+        #vowelCanvas { height: 420px; }
+        #liveVowelCanvas { height: 320px; margin-top: 12px; }
 
-        .legend-color {
-            width: 20px;
-            height: 3px;
-            border-radius: 2px;
-        }
-
-        .comparison-stats {
-            background: linear-gradient(135deg, #fff2e6 0%, #ffe6cc 100%);
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 20px;
-            border-left: 5px solid #f39c12;
-        }
-
-        .comparison-stats h3 {
-            color: #d68910;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .comparison-grid {
+        /* ---- Stats ---- */
+        .stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 16px;
+            margin-top: 22px;
         }
-
-        .comparison-item {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-
-        .comparison-value {
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .comparison-label {
-            color: #666;
-            font-size: 0.9rem;
-        }
-
-        .improvement {
-            color: #28a745;
-        }
-
-        .regression {
-            color: #dc3545;
-        }
-
-        .safety-note {
-            background: linear-gradient(135deg, #fde2e4 0%, #fad2cf 100%);
-            border-radius: 12px;
+        .stat-card {
+            background: var(--card-2);
+            border: 1px solid var(--line);
             padding: 20px;
-            margin-bottom: 25px;
-            border-left: 5px solid #e74c3c;
-            color: #7d2b25;
-            line-height: 1.6;
+            text-align: left;
         }
-
-        .safety-note h3 {
-            color: #c0392b;
-            margin-bottom: 8px;
+        .stat-value { font-size: 1.9rem; font-weight: 700; color: var(--ink); }
+        .stat-label {
+            color: var(--ink-mute);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 4px;
         }
+        .current-range {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 4px 12px;
+            font-weight: 700;
+            font-size: 0.72rem;
+            letter-spacing: 0.06em;
+            color: var(--paper);
+            background: var(--ink);
+        }
+        .current-range.male { background: var(--slate); }
+        .current-range.androgynous { background: var(--ochre); color: var(--ink); }
+        .current-range.female { background: var(--brick); }
 
         .stat-note {
             grid-column: 1 / -1;
             font-size: 0.85rem;
-            color: #666;
+            color: var(--ink-mute);
             font-style: italic;
-            text-align: center;
             padding: 4px 0;
         }
 
-        .live-section {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 25px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-            text-align: center;
+        /* ---- Loading ---- */
+        .loading { text-align: center; padding: 44px; color: var(--ink-soft); }
+        .spinner {
+            width: 26px; height: 26px;
+            border: 3px solid var(--line);
+            border-top-color: var(--brick);
+            animation: spin 0.9s linear infinite;
+            margin: 0 auto 16px;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        .live-section h3 {
-            margin-bottom: 15px;
-            color: #6b73ff;
+        /* ---- Training tips ---- */
+        .training-tips {
+            background: var(--card-2);
+            border: 1px solid var(--line);
+            border-left: 6px solid var(--olive);
+            padding: 22px 24px;
+            margin-top: 22px;
         }
+        .training-tips ul { color: var(--ink-soft); line-height: 1.7; padding-left: 18px; }
 
-        .live-pitch {
-            font-size: 3rem;
-            font-weight: bold;
-            color: #333;
+        /* ---- Legend ---- */
+        .legend { display: flex; gap: 18px; justify-content: flex-start; flex-wrap: wrap; margin-bottom: 14px; }
+        .legend-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 12px;
+            background: var(--card-2);
+            border: 1px solid var(--line);
+            font-size: 0.86rem;
+            font-weight: 600;
         }
+        .legend-color { width: 18px; height: 4px; }
 
-        .live-resonance {
-            color: #666;
-            margin-top: 8px;
-            font-size: 0.95rem;
+        /* ---- Comparison ---- */
+        .comparison-stats {
+            background: var(--card-2);
+            border: 1px solid var(--line);
+            border-left: 6px solid var(--ochre);
+            padding: 22px 24px;
+            margin-top: 22px;
         }
+        .comparison-stats h3 { margin-bottom: 14px; font-size: 1.1rem; }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 16px;
+        }
+        .comparison-item { background: var(--card); border: 1px solid var(--line); padding: 16px; }
+        .comparison-value { font-size: 1.35rem; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+        .comparison-value .icon { width: 16px; height: 16px; }
+        .comparison-label { color: var(--ink-mute); font-size: 0.84rem; margin-top: 4px; }
 
-        .live-meter {
+        /* ---- Live mode ---- */
+        .live-section { text-align: center; }
+        .live-section .section-head { justify-content: center; }
+        .live-pitch { font-size: 3rem; font-weight: 700; color: var(--ink); }
+        .current-range#liveRange { margin-top: 8px; }
+
+        .meter {
             position: relative;
-            height: 26px;
-            border-radius: 13px;
-            margin: 20px auto 5px;
+            display: flex;
+            height: 24px;
             max-width: 600px;
-            background: linear-gradient(90deg,
-                #3498db 0%, #3498db 35.5%,
-                #f39c12 35.5%, #f39c12 48.3%,
-                #e74c3c 48.3%, #e74c3c 100%);
-            box-shadow: inset 0 1px 4px rgba(0,0,0,0.2);
+            margin: 20px auto 4px;
+            border: 1px solid var(--line);
         }
-
+        .meter-seg { height: 100%; }
+        .meter-seg.male { background: var(--slate); }
+        .meter-seg.androgynous { background: var(--ochre); }
+        .meter-seg.female { background: var(--brick); }
         .live-marker {
             position: absolute;
             top: -4px;
-            width: 6px;
-            height: 34px;
-            background: #222;
-            border-radius: 3px;
+            width: 4px;
+            height: 32px;
+            background: var(--ink);
             transform: translateX(-50%);
-            transition: left 0.06s linear;
+            transition: left 0.08s linear;
             display: none;
         }
-
-        .live-meter-labels {
+        .meter-labels {
             display: flex;
             justify-content: space-between;
             max-width: 600px;
             margin: 0 auto;
-            font-size: 0.75rem;
-            color: #888;
+            font-size: 0.74rem;
+            color: var(--ink-mute);
         }
-
-        .live-hint {
-            color: #888;
-            font-size: 0.9rem;
+        .live-hint { color: var(--ink-mute); font-size: 0.9rem; margin-top: 14px; max-width: 60ch; margin-left: auto; margin-right: auto; }
+        #liveF1F2 { color: var(--brick); font-weight: 700; margin-top: 8px; }
+        .live-stability {
+            display: inline-flex; align-items: center; gap: 8px;
             margin-top: 12px;
+            padding: 5px 14px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            border: 1px solid var(--line);
         }
+        .live-stability::before { content: ""; width: 10px; height: 10px; display: inline-block; }
+        .live-stability.steady { color: var(--olive); border-color: var(--olive); }
+        .live-stability.steady::before { background: var(--olive); }
+        .live-stability.unsteady { color: var(--ochre); border-color: var(--ochre); }
+        .live-stability.unsteady::before { background: var(--ochre); border: 1px solid var(--ochre); background: transparent; }
 
-        .btn.active {
-            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-        }
-
-        .visually-hidden {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
-        }
-
-        #vowelCanvas, #liveVowelCanvas {
-            width: 100%;
-            height: 380px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        #liveVowelCanvas {
-            height: 300px;
-            margin-top: 12px;
-        }
-
-        .formant-toggle {
-            font-size: 0.9rem;
-            color: #555;
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .formant-toggle input {
-            vertical-align: middle;
-            margin-right: 6px;
-        }
-
-        #liveF1F2 {
-            color: #6b73ff;
-            font-weight: 600;
-            margin-top: 6px;
-        }
-
-        /* ---- Resonance & formants section ---- */
+        /* ---- Resonance section ---- */
         .resonance-section {
-            background: linear-gradient(135deg, #f3e8ff 0%, #fde2f3 100%);
-            border-radius: 15px;
-            padding: 22px;
+            background: var(--card-2);
+            border: 1px solid var(--line);
+            border-left: 6px solid var(--brick);
+            padding: 24px;
             margin-top: 22px;
-            border-left: 5px solid #9b59b6;
         }
-
-        .resonance-section > h3 {
-            color: #8e44ad;
-            margin-bottom: 6px;
-        }
+        .resonance-section > p.lead { color: var(--ink-soft); font-size: 0.95rem; margin-bottom: 4px; }
 
         .explainer {
-            background: rgba(255,255,255,0.7);
-            border-radius: 10px;
-            padding: 4px 16px;
-            margin: 12px 0 18px;
+            background: var(--card);
+            border: 1px solid var(--line);
+            padding: 2px 18px;
+            margin: 16px 0 20px;
         }
-
         .explainer summary {
             cursor: pointer;
-            font-weight: 600;
-            color: #8e44ad;
-            padding: 10px 0;
+            font-weight: 700;
+            color: var(--brick);
+            padding: 12px 0;
             list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-
         .explainer summary::-webkit-details-marker { display: none; }
-        .explainer summary::before { content: '▸ '; }
-        .explainer[open] summary::before { content: '▾ '; }
-
-        .explainer .explainer-body {
-            color: #4a3b55;
-            line-height: 1.65;
-            padding-bottom: 14px;
-            font-size: 0.95rem;
-        }
-
-        .explainer .explainer-body p { margin-bottom: 10px; }
-        .explainer .explainer-body strong { color: #8e44ad; }
+        .explainer summary::before { content: "+"; font-size: 1.1rem; line-height: 1; width: 14px; }
+        .explainer[open] summary::before { content: "\2013"; }
+        .explainer-body { color: var(--ink-soft); line-height: 1.7; padding-bottom: 16px; font-size: 0.94rem; }
+        .explainer-body p { margin-bottom: 10px; }
+        .explainer-body strong { color: var(--brick); }
 
         .res-cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
             gap: 16px;
         }
+        .res-card { background: var(--card); border: 1px solid var(--line); padding: 18px; }
+        .res-card h4 { margin-bottom: 12px; font-size: 0.95rem; color: var(--ink); }
 
-        .res-card {
-            background: white;
-            border-radius: 12px;
-            padding: 18px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-
-        .res-card h4 {
-            margin-bottom: 12px;
-            color: #333;
-            font-size: 1rem;
-        }
-
-        .gauge-row { margin-bottom: 14px; }
-
-        .gauge-row .gauge-top {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.85rem;
-            color: #555;
-            margin-bottom: 5px;
-        }
-
-        .gauge-row .gauge-top b { color: #8e44ad; }
-
+        .gauge-row { margin-bottom: 16px; }
+        .gauge-top { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 6px; }
+        .gauge-top b { color: var(--brick); }
         .gauge {
             position: relative;
-            height: 14px;
-            border-radius: 7px;
-            background: linear-gradient(90deg, #3498db 0%, #b08fd8 50%, #e74c3c 100%);
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+            height: 12px;
+            background: var(--card-2);
+            border: 1px solid var(--line);
         }
-
         .gauge-marker {
             position: absolute;
-            top: -3px;
+            top: -4px;
             width: 4px;
-            height: 20px;
-            background: #222;
-            border-radius: 2px;
+            height: 18px;
+            background: var(--ink);
             transform: translateX(-50%);
             transition: left 0.25s ease;
         }
+        .gauge-scale { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--ink-mute); margin-top: 4px; }
 
-        .gauge-scale {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.7rem;
-            color: #999;
-            margin-top: 3px;
-        }
-
-        .formant-pair {
-            display: flex;
-            gap: 12px;
-            margin-top: 8px;
-        }
-
-        .formant-pair .fp {
-            flex: 1;
-            text-align: center;
-            background: #f8f5fc;
-            border-radius: 8px;
-            padding: 10px 6px;
-        }
-
-        .formant-pair .fp .fp-val {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #333;
-        }
-
-        .formant-pair .fp .fp-lbl {
-            font-size: 0.75rem;
-            color: #777;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-        }
-
-        .formant-pair .fp .fp-sub {
-            font-size: 0.72rem;
-            color: #999;
-            margin-top: 3px;
-        }
+        .formant-pair { display: flex; gap: 12px; margin-top: 6px; }
+        .formant-pair .fp { flex: 1; text-align: center; background: var(--card-2); border: 1px solid var(--line); padding: 12px 6px; }
+        .formant-pair .fp .fp-val { font-size: 1.5rem; font-weight: 700; color: var(--ink); }
+        .formant-pair .fp .fp-lbl { font-size: 0.74rem; color: var(--ink-mute); text-transform: uppercase; letter-spacing: 0.04em; }
+        .formant-pair .fp .fp-sub { font-size: 0.72rem; color: var(--ink-mute); margin-top: 3px; }
 
         .res-interpret {
-            background: rgba(255,255,255,0.85);
-            border-radius: 10px;
-            padding: 14px 16px;
+            background: var(--card);
+            border: 1px solid var(--line);
+            padding: 16px 18px;
             margin-top: 16px;
-            line-height: 1.6;
-            color: #4a3b55;
-            font-size: 0.95rem;
+            line-height: 1.65;
+            color: var(--ink-soft);
+            font-size: 0.94rem;
+        }
+        .res-interpret h4 { color: var(--brick); margin-bottom: 8px; }
+        .res-interpret .delta-up { color: var(--brick); font-weight: 700; }
+        .res-interpret .delta-down { color: var(--slate); font-weight: 700; }
+
+        .vowel-legend { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-top: 12px; font-size: 0.82rem; color: var(--ink-soft); }
+        .vowel-legend .vl { display: flex; align-items: center; gap: 6px; }
+        .vowel-legend .vl .sw { width: 18px; height: 12px; display: inline-block; }
+
+        .visually-hidden {
+            position: absolute;
+            width: 1px; height: 1px;
+            padding: 0; margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
 
-        .res-interpret h4 { color: #8e44ad; margin-bottom: 8px; }
-        .res-interpret .delta-up { color: #c0398a; font-weight: 600; }
-        .res-interpret .delta-down { color: #2e86c1; font-weight: 600; }
-
-        .vowel-legend {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 16px;
-            justify-content: center;
-            margin-top: 10px;
-            font-size: 0.82rem;
-            color: #555;
+        @media (max-width: 560px) {
+            .header h1 { font-size: 1.9rem; }
+            .container { padding: 28px 16px 48px; }
         }
-
-        .vowel-legend .vl {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .vowel-legend .vl .sw {
-            width: 18px;
-            height: 12px;
-            border-radius: 3px;
-            display: inline-block;
-        }
-
-        .live-stability {
-            display: inline-block;
-            margin-top: 10px;
-            padding: 5px 14px;
-            border-radius: 16px;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-
-        .live-stability.steady { background: #d5f5e3; color: #1e8449; }
-        .live-stability.unsteady { background: #fdebd0; color: #b9770e; }
     </style>
+
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎤 Voice Training Analyzer</h1>
-            <p>Analyze your voice pitch for gender expression training</p>
+            <div class="geo-motif" aria-hidden="true">
+                <span class="geo sq"></span>
+                <span class="geo ci"></span>
+                <span class="geo tr"></span>
+            </div>
+            <h1>Voice Training Analyzer</h1>
+            <p>Analyze your voice pitch and resonance for gender expression training.</p>
         </div>
 
         <div class="voice-ranges">
-            <h3>🎯 Voice Range Guide</h3>
+            <div class="section-head">
+                <svg class="icon icon-slate" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 16 L8 8 L13 14 L16 6 L21 12"/><path d="M3 20 L21 20"/></svg>
+                <h2>Voice Range Guide</h2>
+            </div>
             <div class="range-grid">
                 <div class="range-card male">
-                    <div class="range-title">💙 Male Range</div>
+                    <div class="range-title"><span class="swatch"></span>Male Range</div>
                     <div class="range-freq">85-165 Hz</div>
                 </div>
                 <div class="range-card androgynous">
-                    <div class="range-title">💛 Androgynous Range</div>
+                    <div class="range-title"><span class="swatch"></span>Androgynous Range</div>
                     <div class="range-freq">165-196 Hz</div>
                 </div>
                 <div class="range-card female">
-                    <div class="range-title">❤️ Female Range</div>
+                    <div class="range-title"><span class="swatch"></span>Female Range</div>
                     <div class="range-freq">196-300 Hz</div>
                 </div>
             </div>
         </div>
 
         <div class="safety-note">
-            <h3>💗 Take care of your voice</h3>
-            Never push or strain to force a higher pitch — a feminine voice comes
+            <div class="section-head">
+                <svg class="icon icon-brick" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 L20 7 V12 C20 17 16 20 12 21 C8 20 4 17 4 12 V7 Z"/><path d="M12 9 L12 14"/><path d="M12 16.5 L12 16.6"/></svg>
+                <h3>Take care of your voice</h3>
+            </div>
+            Never push or strain to force a higher pitch &mdash; a feminine voice comes
             far more from <strong>resonance and ease</strong> than from height alone.
             If you feel strain, tension, pain, or hoarseness, stop and rest. For
             personalised, safe guidance consider working with a gender-affirming
@@ -726,54 +557,61 @@
 
         <div class="upload-section">
             <div class="upload-area" id="uploadArea">
-                <div style="font-size: 2rem; margin-bottom: 15px;">🎤</div>
+                <svg class="icon upload-glyph" width="34" height="34" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15 V4"/><path d="M8 8 L12 4 L16 8"/><path d="M4 15 V19 H20 V15"/></svg>
                 <h3>Upload Voice Recordings</h3>
                 <p>Drop audio files here or click to browse</p>
-                <p style="font-size: 0.9rem; color: #666; margin-top: 10px;">
+                <p style="font-size: 0.9rem; color: var(--ink-mute); margin-top: 10px;">
                     Upload 1 file for analysis or 2 files for comparison
                 </p>
                 <input type="file" id="fileInput" class="file-input" accept=".mp3,.wav,.m4a" multiple>
             </div>
-            
-            <div id="fileList" style="margin-top: 15px;"></div>
-            
-            <div style="text-align: center; margin-top: 15px;">
+
+            <div id="fileList" style="margin-top: 16px;"></div>
+
+            <div class="controls">
                 <button class="btn" onclick="clearFiles()" aria-label="Clear all uploaded files">Clear All</button>
-                <button class="btn" onclick="analyzeAudio()" id="analyzeBtn" aria-label="Analyze uploaded voice recordings" disabled>Analyze Voice</button>
-                <button class="btn" onclick="toggleLiveMode()" id="liveBtn" aria-label="Toggle real-time microphone feedback">🎙️ Live Mode</button>
+                <button class="btn btn-primary" onclick="analyzeAudio()" id="analyzeBtn" aria-label="Analyze uploaded voice recordings" disabled>Analyze Voice</button>
+                <button class="btn" onclick="toggleLiveMode()" id="liveBtn" aria-label="Toggle real-time microphone feedback">
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11"/><path d="M6 11 C6 15 9 17 12 17 C15 17 18 15 18 11"/><path d="M12 17 V21"/><path d="M9 21 H15"/></svg>
+                    Live Mode
+                </button>
             </div>
-            <div style="text-align: center; margin-top: 12px;">
-                <label class="formant-toggle">
-                    <input type="checkbox" id="formantToggle" onchange="toggleFormants()">
-                    Enable formant tracking (F1/F2) — experimental, heavier
-                </label>
-            </div>
+            <label class="formant-toggle">
+                <input type="checkbox" id="formantToggle" onchange="toggleFormants()">
+                Enable formant tracking (F1/F2) &mdash; experimental, heavier
+            </label>
         </div>
 
         <div class="live-section" id="liveSection" style="display: none;">
-            <h3>🎙️ Live Voice Feedback</h3>
-            <div id="liveReadout" aria-live="polite" aria-atomic="true">
-                <div class="live-pitch" id="livePitch">– Hz</div>
-                <div class="current-range" id="liveRange">—</div>
+            <div class="section-head">
+                <svg class="icon icon-brick" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11"/><path d="M6 11 C6 15 9 17 12 17 C15 17 18 15 18 11"/><path d="M12 17 V21"/></svg>
+                <h3>Live Voice Feedback</h3>
             </div>
-            <div class="live-meter" aria-hidden="true">
+            <div id="liveReadout" aria-live="polite" aria-atomic="true">
+                <div class="live-pitch" id="livePitch">&ndash; Hz</div>
+                <div class="current-range" id="liveRange">&mdash;</div>
+            </div>
+            <div class="meter" aria-hidden="true">
+                <div class="meter-seg male" style="width:35.5%"></div>
+                <div class="meter-seg androgynous" style="width:12.9%"></div>
+                <div class="meter-seg female" style="width:51.6%"></div>
                 <div class="live-marker" id="liveMarker"></div>
             </div>
-            <div class="live-meter-labels" aria-hidden="true">
+            <div class="meter-labels" aria-hidden="true">
                 <span>80 Hz</span><span>165</span><span>196</span><span>320 Hz</span>
             </div>
 
             <div style="max-width:600px; margin:18px auto 0;">
                 <div class="gauge-row">
-                    <div class="gauge-top"><span>Brightness (darker → brighter)</span><b id="liveBrightVal">–</b></div>
+                    <div class="gauge-top"><span>Brightness (darker to brighter)</span><b id="liveBrightVal">&ndash;</b></div>
                     <div class="gauge"><div class="gauge-marker" id="liveBrightMarker" style="left:0; display:none;"></div></div>
                 </div>
             </div>
 
-            <div id="liveF1F2" style="display:none; margin-top:6px;">F1: – Hz · F2: – Hz</div>
+            <div id="liveF1F2" style="display:none; margin-top:6px;">F1: &ndash; Hz &middot; F2: &ndash; Hz</div>
             <div id="liveStability" class="live-stability" style="display:none;"></div>
 
-            <p class="live-hint">Speak or hum naturally — aim for ease, not strain. Hold a steady vowel to get a clean, settled reading.</p>
+            <p class="live-hint">Speak or hum naturally &mdash; aim for ease, not strain. Hold a steady vowel to get a clean, settled reading.</p>
 
             <div id="liveVowelWrap" style="display: none;">
                 <canvas id="liveVowelCanvas" role="img" aria-label="Live formant vowel space chart showing your current F1 and F2 with a stabilising trail"></canvas>
@@ -797,16 +635,19 @@
                 <div class="stats" id="statsGrid"></div>
 
                 <div class="resonance-section" id="resonanceSection" style="display: none;">
-                    <h3>🔊 Resonance &amp; Vocal Weight</h3>
-                    <p style="color:#6a5a78; font-size:0.92rem;">How <em>bright</em> and <em>forward</em> your voice sounds — often more important than pitch for how a voice is perceived.</p>
+                    <div class="section-head">
+                        <svg class="icon icon-brick" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 H7 L9 6 L12 18 L15 9 L17 12 H20"/></svg>
+                        <h3>Resonance &amp; Vocal Weight</h3>
+                    </div>
+                    <p class="lead">How <em>bright</em> and <em>forward</em> your voice sounds &mdash; often more important than pitch for how a voice is perceived.</p>
 
                     <details class="explainer">
                         <summary>What am I looking at? (resonance, brightness, F1 &amp; F2 explained)</summary>
                         <div class="explainer-body">
-                            <p><strong>Resonance</strong> is the "size and shape" your voice sounds like it comes from. A larger vocal tract (lower, chestier) sounds darker and more masculine; a smaller, more forward space sounds brighter and more feminine. You change it by where you place the sound — not by straining for height.</p>
-                            <p><strong>Brightness</strong> below is a quick spectral measure (the "centre of gravity" of your sound). Higher = brighter. It works on any speech, no special vowel needed — good for a fast at-a-glance read.</p>
-                            <p><strong>F1 and F2</strong> are <em>formants</em> — the two strongest resonant peaks of your vocal tract. They're the most accurate resonance measure, but they depend on the vowel you say, so compare the <em>same</em> sustained vowel (hold an "eee" or "ah") across recordings. As resonance feminises, F1 and F2 both tend to rise.</p>
-                            <p style="color:#7a6a88; font-size:0.88rem;">These are estimates from your audio, not clinical measurements — use them to spot <em>trends</em>, not as exact targets.</p>
+                            <p><strong>Resonance</strong> is the "size and shape" your voice sounds like it comes from. A larger vocal tract (lower, chestier) sounds darker and more masculine; a smaller, more forward space sounds brighter and more feminine. You change it by where you place the sound &mdash; not by straining for height.</p>
+                            <p><strong>Brightness</strong> below is a quick spectral measure (the "centre of gravity" of your sound). Higher means brighter. It works on any speech, no special vowel needed &mdash; good for a fast at-a-glance read.</p>
+                            <p><strong>F1 and F2</strong> are <em>formants</em> &mdash; the two strongest resonant peaks of your vocal tract. They're the most accurate resonance measure, but they depend on the vowel you say, so compare the <em>same</em> sustained vowel (hold an "eee" or "ah") across recordings. As resonance feminises, F1 and F2 both tend to rise.</p>
+                            <p style="color:var(--ink-mute); font-size:0.88rem;">These are estimates from your audio, not clinical measurements &mdash; use them to spot <em>trends</em>, not as exact targets.</p>
                         </div>
                     </details>
 
@@ -822,25 +663,30 @@
                     </div>
 
                     <div class="canvas-container" id="vowelContainer" style="display:none; margin-top:18px;">
-                        <h4 style="text-align:center; color:#8e44ad; margin-bottom:6px;">Resonance map — your vowel position</h4>
+                        <div class="section-head" style="justify-content:center;">
+                            <h4>Resonance map &mdash; your vowel position</h4>
+                        </div>
                         <canvas id="vowelCanvas" role="img" aria-label="Formant vowel space chart plotting F1 against F2 with masculine and feminine reference zones"></canvas>
                         <div class="vowel-legend">
-                            <span class="vl"><span class="sw" style="background:rgba(52,152,219,0.22)"></span>typical masculine zone</span>
-                            <span class="vl"><span class="sw" style="background:rgba(231,76,60,0.20)"></span>typical feminine zone</span>
-                            <span class="vl"><span class="sw" style="background:#6b73ff"></span>your recording(s)</span>
+                            <span class="vl"><span class="sw" style="background:#5B6B7A"></span>typical masculine zone</span>
+                            <span class="vl"><span class="sw" style="background:#B5532A"></span>typical feminine zone</span>
+                            <span class="vl"><span class="sw" style="background:#436B5E"></span>your recording(s)</span>
                         </div>
-                        <p class="stat-note">Each cloud is one recording's voiced frames; the ringed dot is its typical (median) position. Moving toward the upper-left (higher F1 &amp; F2) means brighter, more feminine-typical resonance. Reference zones are population averages — guides, not goals.</p>
+                        <p class="stat-note">Each cloud is one recording's voiced frames; the ringed dot is its typical (median) position. Moving toward the upper-left (higher F1 &amp; F2) means brighter, more feminine-typical resonance. Reference zones are population averages &mdash; guides, not goals.</p>
                     </div>
 
                     <div id="resInterpret"></div>
                 </div>
 
                 <div class="training-tips">
-                    <h3>💡 Voice Training Tips</h3>
+                    <div class="section-head">
+                        <svg class="icon icon-olive" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 C8 3 6 6 6 9 C6 12 9 13 9 16 H15 C15 13 18 12 18 9 C18 6 16 3 12 3 Z"/><path d="M9 19 H15"/><path d="M10 21 H14"/></svg>
+                        <h3>Voice Training Tips</h3>
+                    </div>
                     <ul>
-                        <li>Prioritise resonance over raw pitch — bright, forward resonance reads more feminine than a high pitch alone</li>
+                        <li>Prioritise resonance over raw pitch &mdash; bright, forward resonance reads more feminine than a high pitch alone</li>
                         <li>Practice gently and daily; never strain to reach a target</li>
-                        <li>Focus on resonance placement - chest vs head voice</li>
+                        <li>Focus on resonance placement &mdash; chest vs head voice</li>
                         <li>Work with a gender-affirming voice coach or SLP for personalized guidance</li>
                         <li>Record yourself regularly to track progress</li>
                         <li>Remember: pitch is just one aspect of gender expression</li>
@@ -863,9 +709,9 @@
                 // Boundaries are a tunable approximation of typical speaking
                 // fundamentals; resonance matters as much as pitch.
                 this.ranges = {
-                    male: { min: 85, max: 165, color: '#3498db' },
-                    androgynous: { min: 165, max: 196, color: '#f39c12' },
-                    female: { min: 196, max: 300, color: '#e74c3c' }
+                    male: { min: 85, max: 165, color: '#5B6B7A' },
+                    androgynous: { min: 165, max: 196, color: '#CE9B3F' },
+                    female: { min: 196, max: 300, color: '#B5532A' }
                 };
 
                 // Live (microphone) mode state
@@ -972,7 +818,7 @@
                             filename: this.audioFiles[i].name,
                             pitchData: result.pitchData,
                             resonance: result.resonance,
-                            color: i === 0 ? '#6b73ff' : '#e74c3c'
+                            color: i === 0 ? '#B5532A' : '#436B5E'
                         });
                     }
 
@@ -1298,7 +1144,7 @@
                 const padding = 60;
 
                 // Clear canvas
-                this.ctx.fillStyle = 'white';
+                this.ctx.fillStyle = '#FBF8F1';
                 this.ctx.fillRect(0, 0, width, height);
 
                 // Draw voice range bands
@@ -1360,10 +1206,10 @@
                     d.pitchData.map(p => p.time)
                 ));
 
-                this.ctx.strokeStyle = '#f0f0f0';
+                this.ctx.strokeStyle = '#E0D6C2';
                 this.ctx.lineWidth = 1;
-                this.ctx.font = '11px Arial';
-                this.ctx.fillStyle = '#888';
+                this.ctx.font = '11px "Lucida Sans Unicode", sans-serif';
+                this.ctx.fillStyle = '#8A8070';
 
                 // Time grid (vertical lines) - fewer lines for clarity
                 const timeSteps = Math.min(10, Math.ceil(maxTime / 5)); // One line every 5 seconds max
@@ -1386,10 +1232,10 @@
 
                     // Different line styles for range boundaries
                     if (freq === 165 || freq === 196) {
-                        this.ctx.strokeStyle = '#d0d0d0';
+                        this.ctx.strokeStyle = '#CBBFA8';
                         this.ctx.lineWidth = 1.5;
                     } else {
-                        this.ctx.strokeStyle = '#f0f0f0';
+                        this.ctx.strokeStyle = '#E0D6C2';
                         this.ctx.lineWidth = 1;
                     }
 
@@ -1398,12 +1244,12 @@
                     this.ctx.lineTo(width - padding, y);
                     this.ctx.stroke();
 
-                    this.ctx.fillStyle = freq === 165 || freq === 196 ? '#666' : '#888';
+                    this.ctx.fillStyle = freq === 165 || freq === 196 ? '#5C5446' : '#8A8070';
                     this.ctx.fillText(freq + ' Hz', 8, y - 3);
                 });
 
                 // Main axes with stronger lines
-                this.ctx.strokeStyle = '#333';
+                this.ctx.strokeStyle = '#2A2620';
                 this.ctx.lineWidth = 2;
                 this.ctx.beginPath();
                 this.ctx.moveTo(padding, padding);
@@ -1412,8 +1258,8 @@
                 this.ctx.stroke();
 
                 // Axis labels
-                this.ctx.fillStyle = '#333';
-                this.ctx.font = 'bold 13px Arial';
+                this.ctx.fillStyle = '#2A2620';
+                this.ctx.font = 'bold 13px "Lucida Sans Unicode", sans-serif';
                 this.ctx.fillText('Frequency (Hz)', 8, 25);
                 this.ctx.fillText('Time (seconds)', width - 140, height - 8);
             }
@@ -1690,7 +1536,7 @@
                 const xOf = f2 => padL + (f2max - Math.max(f2min, Math.min(f2max, f2))) / (f2max - f2min) * plotW;
                 const yOf = f1 => padT + (Math.max(f1min, Math.min(f1max, f1)) - f1min) / (f1max - f1min) * plotH;
 
-                ctx.fillStyle = 'white';
+                ctx.fillStyle = '#FBF8F1';
                 ctx.fillRect(0, 0, W, H);
 
                 // Reference zones (population averages across vowels, after
@@ -1707,18 +1553,18 @@
                     ctx.fill();
                     ctx.restore();
                 };
-                zone(1450, 520, 350, 130, 'rgba(52,152,219,0.22)');   // masculine
-                zone(1850, 700, 380, 140, 'rgba(231,76,60,0.20)');    // feminine
-                ctx.font = 'italic 11px Arial';
+                zone(1450, 520, 350, 130, 'rgba(91,107,122,0.22)');   // masculine (slate)
+                zone(1850, 700, 380, 140, 'rgba(181,83,42,0.18)');    // feminine (brick)
+                ctx.font = 'italic 11px "Lucida Sans Unicode", sans-serif';
                 ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillStyle = 'rgba(41,128,185,0.85)';
+                ctx.fillStyle = 'rgba(91,107,122,0.95)';
                 ctx.fillText('masculine', xOf(1450), yOf(520));
-                ctx.fillStyle = 'rgba(192,57,43,0.85)';
+                ctx.fillStyle = 'rgba(181,83,42,0.95)';
                 ctx.fillText('feminine', xOf(1850), yOf(700));
 
                 // Grid + tick labels
-                ctx.strokeStyle = '#f0f0f0'; ctx.lineWidth = 1;
-                ctx.fillStyle = '#999'; ctx.font = '11px Arial';
+                ctx.strokeStyle = '#E0D6C2'; ctx.lineWidth = 1;
+                ctx.fillStyle = '#8A8070'; ctx.font = '11px "Lucida Sans Unicode", sans-serif';
                 ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
                 for (let f2 = 900; f2 <= 2700; f2 += 300) {
                     const x = xOf(f2);
@@ -1733,16 +1579,16 @@
                 }
 
                 // Axes + titles
-                ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
+                ctx.strokeStyle = '#2A2620'; ctx.lineWidth = 2;
                 ctx.beginPath();
                 ctx.moveTo(padL, padT); ctx.lineTo(padL, H - padB); ctx.lineTo(W - padR, H - padB);
                 ctx.stroke();
-                ctx.fillStyle = '#333'; ctx.font = 'bold 12px Arial';
+                ctx.fillStyle = '#2A2620'; ctx.font = 'bold 12px "Lucida Sans Unicode", sans-serif';
                 ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-                ctx.fillText('F2 (Hz) — brighter to the left', padL + plotW / 2, H - 6);
+                ctx.fillText('F2 (Hz) - brighter to the left', padL + plotW / 2, H - 6);
                 ctx.save();
                 ctx.translate(14, padT + plotH / 2); ctx.rotate(-Math.PI / 2);
-                ctx.fillText('F1 (Hz) — higher at the top', 0, 0);
+                ctx.fillText('F1 (Hz) - higher at the top', 0, 0);
                 ctx.restore();
 
                 return { xOf, yOf };
@@ -1766,7 +1612,7 @@
 
                 series.forEach(s => {
                     // Faint cloud of individual voiced frames...
-                    ctx.fillStyle = (s.color || '#6b73ff') + '33';
+                    ctx.fillStyle = (s.color || '#B5532A') + '33';
                     (s.cloud || []).forEach(p => {
                         ctx.beginPath();
                         ctx.arc(xOf(p.f2), yOf(p.f1), 3, 0, 2 * Math.PI);
@@ -1776,12 +1622,12 @@
                     const mx = xOf(s.median.f2), my = yOf(s.median.f1);
                     ctx.beginPath();
                     ctx.arc(mx, my, 8, 0, 2 * Math.PI);
-                    ctx.fillStyle = s.color || '#6b73ff';
+                    ctx.fillStyle = s.color || '#B5532A';
                     ctx.fill();
-                    ctx.lineWidth = 3; ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 3; ctx.strokeStyle = '#FBF8F1';
                     ctx.beginPath(); ctx.arc(mx, my, 8, 0, 2 * Math.PI); ctx.stroke();
                     if (s.label) {
-                        ctx.fillStyle = '#333'; ctx.font = 'bold 12px Arial';
+                        ctx.fillStyle = '#2A2620'; ctx.font = 'bold 12px "Lucida Sans Unicode", sans-serif';
                         ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
                         ctx.fillText(s.label, mx + 13, my);
                     }
@@ -1799,7 +1645,7 @@
 
                 trail.forEach((p, i) => {
                     const a = (i + 1) / trail.length; // older = fainter
-                    ctx.fillStyle = `rgba(107,115,255,${0.10 + a * 0.35})`;
+                    ctx.fillStyle = `rgba(67,107,94,${0.10 + a * 0.4})`;
                     ctx.beginPath();
                     ctx.arc(xOf(p.f2), yOf(p.f1), 2 + a * 3, 0, 2 * Math.PI);
                     ctx.fill();
@@ -1807,8 +1653,8 @@
                 if (settled) {
                     const mx = xOf(settled.f2), my = yOf(settled.f1);
                     ctx.beginPath(); ctx.arc(mx, my, 9, 0, 2 * Math.PI);
-                    ctx.fillStyle = '#6b73ff'; ctx.fill();
-                    ctx.lineWidth = 3; ctx.strokeStyle = 'white';
+                    ctx.fillStyle = '#B5532A'; ctx.fill();
+                    ctx.lineWidth = 3; ctx.strokeStyle = '#FBF8F1';
                     ctx.beginPath(); ctx.arc(mx, my, 9, 0, 2 * Math.PI); ctx.stroke();
                 }
             }
@@ -1970,7 +1816,7 @@
                 const c1 = d[0].resonance || 0, c2 = d[1].resonance || 0, dc = c2 - c1;
                 const fm1 = d[0].formants && d[0].formants.sustained;
                 const fm2 = d[1].formants && d[1].formants.sustained;
-                let html = `<div class="res-interpret"><h4>What changed (File 1 → File 2)</h4>`;
+                let html = `<div class="res-interpret"><h4>What changed (File 1 &rarr; File 2)</h4>`;
                 if (c1 && c2) {
                     html += `<p>Brightness moved from <strong>${Math.round(c1)}</strong> to <strong>${Math.round(c2)} Hz</strong> — <span class="${cls(dc)}">${word(dc, 'brighter', 'darker')}</span> (${dc > 0 ? '+' : ''}${Math.round(dc)} Hz).</p>`;
                 }
@@ -1999,28 +1845,35 @@
                 const range1 = this.getDominantRange(avg1);
                 const range2 = this.getDominantRange(avg2);
                 const rangeChange = range1 !== range2
-                    ? `${range1.toUpperCase()} → ${range2.toUpperCase()}`
+                    ? `${range1.toUpperCase()} &rarr; ${range2.toUpperCase()}`
                     : `Same (${range1.toUpperCase()})`;
 
                 // Neutral, directional change formatting. File order is chosen
                 // by the user, so we don't label changes "improvement"/"regression".
                 // (Resonance/formant changes are explained in the resonance panel.)
-                const arrow = (d) => d > 0 ? '▲' : (d < 0 ? '▼' : '–');
+                // Small inline arrow icons (up / down / flat) for direction.
+                const upSvg = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19 V5"/><path d="M6 11 L12 5 L18 11"/></svg>';
+                const downSvg = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5 V19"/><path d="M6 13 L12 19 L18 13"/></svg>';
+                const flatSvg = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12 H19"/></svg>';
+                const arrow = (d) => d > 0 ? upSvg : (d < 0 ? downSvg : flatSvg);
                 const signed = (d, unit) => (d > 0 ? '+' : '') + Math.round(d) + ' ' + unit;
 
                 const comparisonHTML = `
                     <div class="comparison-stats">
-                        <h3>📊 Pitch Comparison</h3>
-                        <p class="stat-note" style="text-align:left; margin-bottom:12px;">
+                        <div class="section-head">
+                            <svg class="icon icon-ochre" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="13" width="4" height="7"/><rect x="10" y="8" width="4" height="12"/><rect x="16" y="4" width="4" height="16"/></svg>
+                            <h3>Pitch Comparison</h3>
+                        </div>
+                        <p class="stat-note" style="margin-bottom:12px;">
                             Change from <strong>File 1</strong> to <strong>File 2</strong>
-                            (${this.analysisData[0].filename} → ${this.analysisData[1].filename}).
-                            Arrows show direction only — neither direction is inherently "better".
+                            (${this.analysisData[0].filename} &rarr; ${this.analysisData[1].filename}).
+                            Arrows show direction only &mdash; neither direction is inherently "better".
                             Resonance &amp; formant changes are explained in the panel above.
                         </p>
                         <div class="comparison-grid">
                             <div class="comparison-item">
-                                <div class="comparison-value">${avg1.toFixed(0)} → ${avg2.toFixed(0)} Hz</div>
-                                <div class="comparison-label">Average Pitch (File 1 → 2)</div>
+                                <div class="comparison-value">${avg1.toFixed(0)} &rarr; ${avg2.toFixed(0)} Hz</div>
+                                <div class="comparison-label">Average Pitch (File 1 &rarr; 2)</div>
                             </div>
                             <div class="comparison-item">
                                 <div class="comparison-value">${arrow(difference)} ${signed(difference, 'Hz')} (${percentChange > 0 ? '+' : ''}${percentChange.toFixed(1)}%)</div>
@@ -2186,10 +2039,10 @@
                     stab.style.display = 'inline-block';
                     if (steady) {
                         stab.className = 'live-stability steady';
-                        stab.textContent = '● Steady — settled reading';
+                        stab.textContent = 'Steady - settled reading';
                     } else {
                         stab.className = 'live-stability unsteady';
-                        stab.textContent = '○ Hold a steady vowel to settle';
+                        stab.textContent = 'Hold a steady vowel to settle';
                     }
 
                     // Only show the solid "settled" marker once steady.
@@ -2281,6 +2134,9 @@
             analyzer.analyzeAudio();
         }
 
+        const MIC_ICON = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11"/><path d="M6 11 C6 15 9 17 12 17 C15 17 18 15 18 11"/><path d="M12 17 V21"/></svg>';
+        const STOP_ICON = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12"/></svg>';
+
         async function toggleLiveMode() {
             const liveSection = document.getElementById('liveSection');
             const liveBtn = document.getElementById('liveBtn');
@@ -2288,13 +2144,13 @@
             if (analyzer.liveActive) {
                 analyzer.stopLiveMode();
                 liveSection.style.display = 'none';
-                liveBtn.textContent = '🎙️ Live Mode';
+                liveBtn.innerHTML = MIC_ICON + ' Live Mode';
                 liveBtn.classList.remove('active');
             } else {
                 const ok = await analyzer.startLiveMode();
                 if (ok) {
                     liveSection.style.display = 'block';
-                    liveBtn.textContent = '⏹ Stop Live Mode';
+                    liveBtn.innerHTML = STOP_ICON + ' Stop Live Mode';
                     liveBtn.classList.add('active');
                 }
             }
@@ -2312,7 +2168,7 @@
                     if (!restarted) {
                         const liveBtn = document.getElementById('liveBtn');
                         document.getElementById('liveSection').style.display = 'none';
-                        liveBtn.textContent = '🎙️ Live Mode';
+                        liveBtn.innerHTML = MIC_ICON + ' Live Mode';
                         liveBtn.classList.remove('active');
                     }
                 });
