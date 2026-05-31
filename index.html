@@ -504,6 +504,189 @@
             font-weight: 600;
             margin-top: 6px;
         }
+
+        /* ---- Resonance & formants section ---- */
+        .resonance-section {
+            background: linear-gradient(135deg, #f3e8ff 0%, #fde2f3 100%);
+            border-radius: 15px;
+            padding: 22px;
+            margin-top: 22px;
+            border-left: 5px solid #9b59b6;
+        }
+
+        .resonance-section > h3 {
+            color: #8e44ad;
+            margin-bottom: 6px;
+        }
+
+        .explainer {
+            background: rgba(255,255,255,0.7);
+            border-radius: 10px;
+            padding: 4px 16px;
+            margin: 12px 0 18px;
+        }
+
+        .explainer summary {
+            cursor: pointer;
+            font-weight: 600;
+            color: #8e44ad;
+            padding: 10px 0;
+            list-style: none;
+        }
+
+        .explainer summary::-webkit-details-marker { display: none; }
+        .explainer summary::before { content: '▸ '; }
+        .explainer[open] summary::before { content: '▾ '; }
+
+        .explainer .explainer-body {
+            color: #4a3b55;
+            line-height: 1.65;
+            padding-bottom: 14px;
+            font-size: 0.95rem;
+        }
+
+        .explainer .explainer-body p { margin-bottom: 10px; }
+        .explainer .explainer-body strong { color: #8e44ad; }
+
+        .res-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+        }
+
+        .res-card {
+            background: white;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .res-card h4 {
+            margin-bottom: 12px;
+            color: #333;
+            font-size: 1rem;
+        }
+
+        .gauge-row { margin-bottom: 14px; }
+
+        .gauge-row .gauge-top {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #555;
+            margin-bottom: 5px;
+        }
+
+        .gauge-row .gauge-top b { color: #8e44ad; }
+
+        .gauge {
+            position: relative;
+            height: 14px;
+            border-radius: 7px;
+            background: linear-gradient(90deg, #3498db 0%, #b08fd8 50%, #e74c3c 100%);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .gauge-marker {
+            position: absolute;
+            top: -3px;
+            width: 4px;
+            height: 20px;
+            background: #222;
+            border-radius: 2px;
+            transform: translateX(-50%);
+            transition: left 0.25s ease;
+        }
+
+        .gauge-scale {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: #999;
+            margin-top: 3px;
+        }
+
+        .formant-pair {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .formant-pair .fp {
+            flex: 1;
+            text-align: center;
+            background: #f8f5fc;
+            border-radius: 8px;
+            padding: 10px 6px;
+        }
+
+        .formant-pair .fp .fp-val {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .formant-pair .fp .fp-lbl {
+            font-size: 0.75rem;
+            color: #777;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .formant-pair .fp .fp-sub {
+            font-size: 0.72rem;
+            color: #999;
+            margin-top: 3px;
+        }
+
+        .res-interpret {
+            background: rgba(255,255,255,0.85);
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-top: 16px;
+            line-height: 1.6;
+            color: #4a3b55;
+            font-size: 0.95rem;
+        }
+
+        .res-interpret h4 { color: #8e44ad; margin-bottom: 8px; }
+        .res-interpret .delta-up { color: #c0398a; font-weight: 600; }
+        .res-interpret .delta-down { color: #2e86c1; font-weight: 600; }
+
+        .vowel-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 10px;
+            font-size: 0.82rem;
+            color: #555;
+        }
+
+        .vowel-legend .vl {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .vowel-legend .vl .sw {
+            width: 18px;
+            height: 12px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .live-stability {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 5px 14px;
+            border-radius: 16px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .live-stability.steady { background: #d5f5e3; color: #1e8449; }
+        .live-stability.unsteady { background: #fdebd0; color: #b9770e; }
     </style>
 </head>
 <body>
@@ -572,8 +755,6 @@
             <div id="liveReadout" aria-live="polite" aria-atomic="true">
                 <div class="live-pitch" id="livePitch">– Hz</div>
                 <div class="current-range" id="liveRange">—</div>
-                <div class="live-resonance" id="liveResonance">Resonance: – Hz</div>
-                <div id="liveF1F2" style="display: none;">F1: – Hz · F2: – Hz</div>
             </div>
             <div class="live-meter" aria-hidden="true">
                 <div class="live-marker" id="liveMarker"></div>
@@ -581,9 +762,22 @@
             <div class="live-meter-labels" aria-hidden="true">
                 <span>80 Hz</span><span>165</span><span>196</span><span>320 Hz</span>
             </div>
-            <p class="live-hint">Speak or hum naturally and watch the marker. Aim for ease, not strain.</p>
+
+            <div style="max-width:600px; margin:18px auto 0;">
+                <div class="gauge-row">
+                    <div class="gauge-top"><span>Brightness (darker → brighter)</span><b id="liveBrightVal">–</b></div>
+                    <div class="gauge"><div class="gauge-marker" id="liveBrightMarker" style="left:0; display:none;"></div></div>
+                </div>
+            </div>
+
+            <div id="liveF1F2" style="display:none; margin-top:6px;">F1: – Hz · F2: – Hz</div>
+            <div id="liveStability" class="live-stability" style="display:none;"></div>
+
+            <p class="live-hint">Speak or hum naturally — aim for ease, not strain. Hold a steady vowel to get a clean, settled reading.</p>
+
             <div id="liveVowelWrap" style="display: none;">
-                <canvas id="liveVowelCanvas" role="img" aria-label="Live formant vowel space chart showing F1 against F2"></canvas>
+                <canvas id="liveVowelCanvas" role="img" aria-label="Live formant vowel space chart showing your current F1 and F2 with a stabilising trail"></canvas>
+                <p class="stat-note">The fading trail shows your recent movement; the solid ring is your settled position once you hold steady.</p>
             </div>
         </div>
 
@@ -602,10 +796,43 @@
 
                 <div class="stats" id="statsGrid"></div>
 
-                <div class="canvas-container" id="vowelContainer" style="display: none;">
-                    <h3 style="text-align: center; color: #6b73ff; margin-bottom: 8px;">Resonance map — F1 vs F2 vowel space</h3>
-                    <canvas id="vowelCanvas" role="img" aria-label="Formant vowel space chart plotting F1 against F2 for each recording"></canvas>
-                    <p class="stat-note">F1/F2 are LPC estimates and depend on the vowel spoken — compare the <em>same</em> sustained vowel across recordings. Toward the upper-left (higher F1 &amp; F2) is generally brighter, more feminine-typical resonance.</p>
+                <div class="resonance-section" id="resonanceSection" style="display: none;">
+                    <h3>🔊 Resonance &amp; Vocal Weight</h3>
+                    <p style="color:#6a5a78; font-size:0.92rem;">How <em>bright</em> and <em>forward</em> your voice sounds — often more important than pitch for how a voice is perceived.</p>
+
+                    <details class="explainer">
+                        <summary>What am I looking at? (resonance, brightness, F1 &amp; F2 explained)</summary>
+                        <div class="explainer-body">
+                            <p><strong>Resonance</strong> is the "size and shape" your voice sounds like it comes from. A larger vocal tract (lower, chestier) sounds darker and more masculine; a smaller, more forward space sounds brighter and more feminine. You change it by where you place the sound — not by straining for height.</p>
+                            <p><strong>Brightness</strong> below is a quick spectral measure (the "centre of gravity" of your sound). Higher = brighter. It works on any speech, no special vowel needed — good for a fast at-a-glance read.</p>
+                            <p><strong>F1 and F2</strong> are <em>formants</em> — the two strongest resonant peaks of your vocal tract. They're the most accurate resonance measure, but they depend on the vowel you say, so compare the <em>same</em> sustained vowel (hold an "eee" or "ah") across recordings. As resonance feminises, F1 and F2 both tend to rise.</p>
+                            <p style="color:#7a6a88; font-size:0.88rem;">These are estimates from your audio, not clinical measurements — use them to spot <em>trends</em>, not as exact targets.</p>
+                        </div>
+                    </details>
+
+                    <div class="res-cards">
+                        <div class="res-card" id="brightnessCard">
+                            <h4>Brightness</h4>
+                            <div id="brightnessGauges"></div>
+                        </div>
+                        <div class="res-card" id="formantCard">
+                            <h4>Formants (F1 / F2)</h4>
+                            <div id="formantReadouts"></div>
+                        </div>
+                    </div>
+
+                    <div class="canvas-container" id="vowelContainer" style="display:none; margin-top:18px;">
+                        <h4 style="text-align:center; color:#8e44ad; margin-bottom:6px;">Resonance map — your vowel position</h4>
+                        <canvas id="vowelCanvas" role="img" aria-label="Formant vowel space chart plotting F1 against F2 with masculine and feminine reference zones"></canvas>
+                        <div class="vowel-legend">
+                            <span class="vl"><span class="sw" style="background:rgba(52,152,219,0.22)"></span>typical masculine zone</span>
+                            <span class="vl"><span class="sw" style="background:rgba(231,76,60,0.20)"></span>typical feminine zone</span>
+                            <span class="vl"><span class="sw" style="background:#6b73ff"></span>your recording(s)</span>
+                        </div>
+                        <p class="stat-note">Each cloud is one recording's voiced frames; the ringed dot is its typical (median) position. Moving toward the upper-left (higher F1 &amp; F2) means brighter, more feminine-typical resonance. Reference zones are population averages — guides, not goals.</p>
+                    </div>
+
+                    <div id="resInterpret"></div>
                 </div>
 
                 <div class="training-tips">
@@ -1020,8 +1247,7 @@
 
                 this.setupCanvas();
                 this.drawPitchGraph();
-                this.displayStatistics();
-                this.renderVowelSpace();
+                this.displayStatistics(); // also renders the resonance panel
 
                 // Show legend if comparing files
                 if (this.analysisData.length > 1) {
@@ -1434,111 +1660,157 @@
             renderVowelSpace() {
                 const container = document.getElementById('vowelContainer');
                 if (!container) return;
-                const pts = [];
+                const series = [];
                 this.analysisData.forEach((d, i) => {
-                    const s = d.formants && d.formants.sustained;
+                    const f = d.formants;
+                    const s = f && f.sustained;
                     if (s && s.f1 && s.f2) {
-                        pts.push({
-                            f1: s.f1, f2: s.f2, color: d.color,
+                        series.push({
+                            // Cloud = all voiced frames; median = settled position.
+                            cloud: (f.frames || []).filter(p => p.f1 && p.f2),
+                            median: { f1: s.f1, f2: s.f2 },
+                            color: d.color,
                             label: this.analysisData.length > 1 ? `File ${i + 1}` : 'You'
                         });
                     }
                 });
-                if (pts.length === 0) { container.style.display = 'none'; return; }
+                if (series.length === 0) { container.style.display = 'none'; return; }
                 container.style.display = 'block';
-                this.drawVowelSpace('vowelCanvas', pts, null);
+                this.drawVowelSpace('vowelCanvas', series, null);
             }
 
-            drawVowelSpace(canvasId, points, liveDot) {
-                const canvas = document.getElementById(canvasId);
-                if (!canvas) return;
+            // Shared coordinate system + backdrop (reference zones, grid, axes)
+            // for the F1/F2 vowel map. Returns the projection helpers so both the
+            // file map and the live map look and scale identically.
+            vowelChartBase(ctx, W, H) {
+                const padL = 62, padR = 28, padT = 28, padB = 58;
+                const plotW = W - padL - padR, plotH = H - padT - padB;
+                // F2 on x (higher to the LEFT), F1 on y (higher at the TOP).
+                const f2min = 700, f2max = 2900, f1min = 250, f1max = 950;
+                const xOf = f2 => padL + (f2max - Math.max(f2min, Math.min(f2max, f2))) / (f2max - f2min) * plotW;
+                const yOf = f1 => padT + (Math.max(f1min, Math.min(f1max, f1)) - f1min) / (f1max - f1min) * plotH;
+
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, W, H);
+
+                // Reference zones (population averages across vowels, after
+                // Hillenbrand et al. 1995): masculine = lower F1/F2 (toward the
+                // lower-right), feminine = higher F1/F2 (toward the upper-left).
+                const zone = (f2c, f1c, rf2, rf1, fill) => {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.ellipse(xOf(f2c), yOf(f1c),
+                        Math.abs(xOf(f2c - rf2) - xOf(f2c + rf2)) / 2,
+                        Math.abs(yOf(f1c - rf1) - yOf(f1c + rf1)) / 2,
+                        0, 0, 2 * Math.PI);
+                    ctx.fillStyle = fill;
+                    ctx.fill();
+                    ctx.restore();
+                };
+                zone(1450, 520, 350, 130, 'rgba(52,152,219,0.22)');   // masculine
+                zone(1850, 700, 380, 140, 'rgba(231,76,60,0.20)');    // feminine
+                ctx.font = 'italic 11px Arial';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillStyle = 'rgba(41,128,185,0.85)';
+                ctx.fillText('masculine', xOf(1450), yOf(520));
+                ctx.fillStyle = 'rgba(192,57,43,0.85)';
+                ctx.fillText('feminine', xOf(1850), yOf(700));
+
+                // Grid + tick labels
+                ctx.strokeStyle = '#f0f0f0'; ctx.lineWidth = 1;
+                ctx.fillStyle = '#999'; ctx.font = '11px Arial';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+                for (let f2 = 900; f2 <= 2700; f2 += 300) {
+                    const x = xOf(f2);
+                    ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, H - padB); ctx.stroke();
+                    ctx.fillText(f2 + '', x, H - padB + 15);
+                }
+                ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+                for (let f1 = 300; f1 <= 900; f1 += 150) {
+                    const y = yOf(f1);
+                    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+                    ctx.fillText(f1 + '', padL - 8, y);
+                }
+
+                // Axes + titles
+                ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(padL, padT); ctx.lineTo(padL, H - padB); ctx.lineTo(W - padR, H - padB);
+                ctx.stroke();
+                ctx.fillStyle = '#333'; ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+                ctx.fillText('F2 (Hz) — brighter to the left', padL + plotW / 2, H - 6);
+                ctx.save();
+                ctx.translate(14, padT + plotH / 2); ctx.rotate(-Math.PI / 2);
+                ctx.fillText('F1 (Hz) — higher at the top', 0, 0);
+                ctx.restore();
+
+                return { xOf, yOf };
+            }
+
+            setupHiDpiCanvas(canvas) {
                 const ctx = canvas.getContext('2d');
                 const rect = canvas.getBoundingClientRect();
                 const dpr = window.devicePixelRatio || 1;
                 canvas.width = rect.width * dpr;
                 canvas.height = rect.height * dpr;
                 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-                // Asymmetric padding: extra room at the bottom for the tick
-                // numbers + axis title (two separate rows) and on the left for
-                // the rotated F1 title.
-                const W = rect.width, H = rect.height;
-                const padL = 60, padR = 30, padT = 30, padB = 56;
-                const plotW = W - padL - padR;
-                const plotH = H - padT - padB;
+                return { ctx, W: rect.width, H: rect.height };
+            }
 
-                // Conventional vowel chart: F2 on x (high on the LEFT), F1 on y
-                // (low at the TOP). Higher formants => upper-left.
-                const f2min = 800, f2max = 2800, f1min = 250, f1max = 950;
-                const xOf = f2 => padL + (f2max - f2) / (f2max - f2min) * plotW;
-                const yOf = f1 => padT + (f1 - f1min) / (f1max - f1min) * plotH;
+            drawVowelSpace(canvasId, series) {
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return;
+                const { ctx, W, H } = this.setupHiDpiCanvas(canvas);
+                const { xOf, yOf } = this.vowelChartBase(ctx, W, H);
 
-                ctx.fillStyle = 'white';
-                ctx.fillRect(0, 0, W, H);
-
-                // Faint "brighter resonance" highlight toward upper-left.
-                ctx.fillStyle = 'rgba(231, 76, 60, 0.07)';
-                ctx.fillRect(padL, padT, plotW * 0.5, plotH * 0.5);
-                ctx.fillStyle = 'rgba(231, 76, 60, 0.6)';
-                ctx.font = '11px Arial';
-                ctx.fillText('brighter / more feminine-typical', padL + 8, padT + 16);
-
-                // Grid + tick labels
-                ctx.strokeStyle = '#f0f0f0';
-                ctx.lineWidth = 1;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'alphabetic';
-                ctx.fillStyle = '#888';
-                ctx.font = '11px Arial';
-                for (let f2 = 1000; f2 <= 2800; f2 += 400) {
-                    const x = xOf(f2);
-                    ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, H - padB); ctx.stroke();
-                    ctx.fillText(f2 + '', x, H - padB + 15); // tick row
-                }
-                ctx.textAlign = 'right';
-                ctx.textBaseline = 'middle';
-                for (let f1 = 300; f1 <= 900; f1 += 200) {
-                    const y = yOf(f1);
-                    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
-                    ctx.fillText(f1 + '', padL - 8, y);
-                }
-
-                // Axes
-                ctx.strokeStyle = '#333';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(padL, padT); ctx.lineTo(padL, H - padB); ctx.lineTo(W - padR, H - padB);
-                ctx.stroke();
-
-                // Axis titles (on their own rows, centered — no overlap)
-                ctx.fillStyle = '#333';
-                ctx.font = 'bold 12px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'alphabetic';
-                ctx.fillText('F2 (Hz) — higher to the left', padL + plotW / 2, H - 6);
-                ctx.save();
-                ctx.translate(14, padT + plotH / 2); ctx.rotate(-Math.PI / 2);
-                ctx.fillText('F1 (Hz) — higher at the top', 0, 0);
-                ctx.restore();
-
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'middle';
-                const plot = (p, radius, withLabel) => {
-                    const cf1 = Math.max(f1min, Math.min(f1max, p.f1));
-                    const cf2 = Math.max(f2min, Math.min(f2max, p.f2));
-                    const x = xOf(cf2), y = yOf(cf1);
-                    ctx.fillStyle = p.color || '#6b73ff';
+                series.forEach(s => {
+                    // Faint cloud of individual voiced frames...
+                    ctx.fillStyle = (s.color || '#6b73ff') + '33';
+                    (s.cloud || []).forEach(p => {
+                        ctx.beginPath();
+                        ctx.arc(xOf(p.f2), yOf(p.f1), 3, 0, 2 * Math.PI);
+                        ctx.fill();
+                    });
+                    // ...with a ringed median marker for the settled position.
+                    const mx = xOf(s.median.f2), my = yOf(s.median.f1);
                     ctx.beginPath();
-                    ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                    ctx.arc(mx, my, 8, 0, 2 * Math.PI);
+                    ctx.fillStyle = s.color || '#6b73ff';
                     ctx.fill();
-                    if (withLabel && p.label) {
-                        ctx.fillStyle = '#333';
-                        ctx.font = 'bold 12px Arial';
-                        ctx.fillText(p.label, x + radius + 4, y);
+                    ctx.lineWidth = 3; ctx.strokeStyle = 'white';
+                    ctx.beginPath(); ctx.arc(mx, my, 8, 0, 2 * Math.PI); ctx.stroke();
+                    if (s.label) {
+                        ctx.fillStyle = '#333'; ctx.font = 'bold 12px Arial';
+                        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+                        ctx.fillText(s.label, mx + 13, my);
                     }
-                };
+                });
+            }
 
-                (points || []).forEach(p => plot(p, 7, true));
-                if (liveDot && liveDot.f1 && liveDot.f2) plot({ ...liveDot, color: '#6b73ff' }, 9, false);
+            // Live map: a fading comet trail of recent positions plus a solid
+            // "settled" marker (the smoothed average) so it reads as guidance
+            // rather than a dot flying around.
+            drawLiveVowelSpace(trail, settled) {
+                const canvas = document.getElementById('liveVowelCanvas');
+                if (!canvas) return;
+                const { ctx, W, H } = this.setupHiDpiCanvas(canvas);
+                const { xOf, yOf } = this.vowelChartBase(ctx, W, H);
+
+                trail.forEach((p, i) => {
+                    const a = (i + 1) / trail.length; // older = fainter
+                    ctx.fillStyle = `rgba(107,115,255,${0.10 + a * 0.35})`;
+                    ctx.beginPath();
+                    ctx.arc(xOf(p.f2), yOf(p.f1), 2 + a * 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                });
+                if (settled) {
+                    const mx = xOf(settled.f2), my = yOf(settled.f1);
+                    ctx.beginPath(); ctx.arc(mx, my, 9, 0, 2 * Math.PI);
+                    ctx.fillStyle = '#6b73ff'; ctx.fill();
+                    ctx.lineWidth = 3; ctx.strokeStyle = 'white';
+                    ctx.beginPath(); ctx.arc(mx, my, 9, 0, 2 * Math.PI); ctx.stroke();
+                }
             }
 
             displayStatistics() {
@@ -1580,45 +1852,21 @@
                             <div class="stat-value">${range.toFixed(1)}</div>
                             <div class="stat-label">${filePrefix}Pitch Range (Hz)</div>
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-value">${resonance > 0 ? Math.round(resonance) : '–'}</div>
-                            <div class="stat-label">${filePrefix}Resonance ~Hz (est.)</div>
-                        </div>
                     `;
 
-                    const fm = data.formants && data.formants.sustained;
-                    let formantCards = '';
-                    let formantSummary = '';
-                    if (fm && fm.f1 && fm.f2) {
-                        formantCards = `
-                        <div class="stat-card">
-                            <div class="stat-value">${Math.round(fm.f1)}</div>
-                            <div class="stat-label">${filePrefix}F1 (Hz, est.)</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value">${Math.round(fm.f2)}</div>
-                            <div class="stat-label">${filePrefix}F2 (Hz, est.)</div>
-                        </div>`;
-                        formantSummary = `, formants F1 ${Math.round(fm.f1)} and F2 ${Math.round(fm.f2)} hertz`;
-                    }
+                    statsGrid.innerHTML += statsHTML;
 
-                    statsGrid.innerHTML += statsHTML + formantCards;
+                    const fm = data.formants && data.formants.sustained;
+                    const formantSummary = (fm && fm.f1 && fm.f2)
+                        ? `, formants F1 ${Math.round(fm.f1)} and F2 ${Math.round(fm.f2)} hertz` : '';
 
                     const filename = this.analysisData.length > 1 ? `File ${index + 1}` : 'Recording';
                     summaryParts.push(`${filename}: average pitch ${avgPitch.toFixed(0)} hertz, ` +
                         `ranging ${minPitch.toFixed(0)} to ${maxPitch.toFixed(0)} hertz, ` +
                         `classified ${dominantRange}` +
-                        (resonance > 0 ? `, estimated resonance ${Math.round(resonance)} hertz` : '') +
+                        (resonance > 0 ? `, estimated resonance brightness ${Math.round(resonance)} hertz` : '') +
                         formantSummary + '.');
                 });
-
-                // Note that resonance is an approximation
-                statsGrid.innerHTML += `
-                    <div class="stat-note">
-                        Resonance is an approximate brightness estimate (spectral centroid),
-                        not clinical formant analysis — use it as a rough guide alongside pitch.
-                    </div>
-                `;
 
                 // Update accessible text alternatives for the canvas graph
                 const summaryText = summaryParts.join(' ');
@@ -1628,10 +1876,113 @@
                 if (canvas) canvas.setAttribute('aria-label',
                     'Pitch contour graph over time. ' + summaryText);
 
+                // Resonance & formant section (its own panel, with explanations)
+                this.displayResonance();
+
                 // Add comparison section if we have 2 files
                 if (this.analysisData.length === 2) {
                     this.displayComparison();
                 }
+            }
+
+            // Map a spectral-centroid brightness value to a 0-100% gauge.
+            brightnessPct(centroid) {
+                if (!centroid) return 0;
+                const lo = 300, hi = 1300;
+                return Math.max(0, Math.min(100, (centroid - lo) / (hi - lo) * 100));
+            }
+
+            displayResonance() {
+                const section = document.getElementById('resonanceSection');
+                const gaugesEl = document.getElementById('brightnessGauges');
+                const formantsEl = document.getElementById('formantReadouts');
+                const interpretEl = document.getElementById('resInterpret');
+                if (!section) return;
+                gaugesEl.innerHTML = '';
+                formantsEl.innerHTML = '';
+                interpretEl.innerHTML = '';
+
+                const hasResonance = this.analysisData.some(d => (d.resonance || 0) > 0);
+                if (!hasResonance) { section.style.display = 'none'; return; }
+                section.style.display = 'block';
+
+                const multi = this.analysisData.length > 1;
+
+                // Brightness gauges (always available — no special vowel needed)
+                this.analysisData.forEach((d, i) => {
+                    const c = d.resonance || 0;
+                    const pct = this.brightnessPct(c);
+                    const label = multi ? `File ${i + 1}` : 'Your voice';
+                    gaugesEl.insertAdjacentHTML('beforeend', `
+                        <div class="gauge-row">
+                            <div class="gauge-top"><span>${label}</span><b>${c > 0 ? Math.round(c) + ' Hz' : '–'}</b></div>
+                            <div class="gauge"><div class="gauge-marker" style="left:${pct}%; background:${d.color}"></div></div>
+                            <div class="gauge-scale"><span>darker</span><span>brighter</span></div>
+                        </div>`);
+                });
+
+                // Formant readouts (only when formant tracking produced data)
+                const anyFormant = this.analysisData.some(d => d.formants && d.formants.sustained);
+                if (!anyFormant) {
+                    formantsEl.innerHTML = `<p class="stat-note" style="text-align:left">
+                        Formant tracking is off (or no steady vowel was found). Tick
+                        <em>"Enable formant tracking"</em> above and re-analyse a recording with a
+                        held vowel ("eee" / "ah") to see F1/F2 — the most accurate resonance measure.</p>`;
+                } else {
+                    this.analysisData.forEach((d, i) => {
+                        const fm = d.formants && d.formants.sustained;
+                        const label = multi ? `File ${i + 1}` : 'Your voice';
+                        if (fm && fm.f1 && fm.f2) {
+                            formantsEl.insertAdjacentHTML('beforeend', `
+                                <div style="margin-bottom:12px;">
+                                    <div style="font-size:0.82rem;color:#777;margin-bottom:4px;">${label}</div>
+                                    <div class="formant-pair">
+                                        <div class="fp"><div class="fp-val">${Math.round(fm.f1)}</div><div class="fp-lbl">F1 Hz</div><div class="fp-sub">vowel openness</div></div>
+                                        <div class="fp"><div class="fp-val">${Math.round(fm.f2)}</div><div class="fp-lbl">F2 Hz</div><div class="fp-sub">brightness / placement</div></div>
+                                    </div>
+                                </div>`);
+                        }
+                    });
+                }
+
+                this.renderVowelSpace();
+                interpretEl.innerHTML = this.buildResonanceInterpretation();
+            }
+
+            buildResonanceInterpretation() {
+                const d = this.analysisData;
+                const cls = v => v > 0 ? 'delta-up' : (v < 0 ? 'delta-down' : '');
+                const word = (v, up, down) => v > 0 ? up : (v < 0 ? down : 'about the same');
+
+                if (d.length === 1) {
+                    const c = d[0].resonance || 0;
+                    const fm = d[0].formants && d[0].formants.sustained;
+                    let html = `<div class="res-interpret"><h4>What this means</h4>`;
+                    html += `<p>Your brightness sits around <strong>${Math.round(c)} Hz</strong>. Brightness is a quick proxy for resonance — to feminise it, gradually bring the sound <em>forward and smaller</em> over time so this rises, rather than straining for higher pitch.</p>`;
+                    if (fm && fm.f1 && fm.f2) {
+                        html += `<p>For the vowel you recorded, F1 is <strong>${Math.round(fm.f1)} Hz</strong> and F2 is <strong>${Math.round(fm.f2)} Hz</strong>. As resonance feminises these tend to rise together. Record the <em>same</em> sustained vowel again later and watch for both climbing — that's your progress signal.</p>`;
+                    } else {
+                        html += `<p>For a precise read, enable formant tracking and record a held vowel.</p>`;
+                    }
+                    return html + `</div>`;
+                }
+
+                const c1 = d[0].resonance || 0, c2 = d[1].resonance || 0, dc = c2 - c1;
+                const fm1 = d[0].formants && d[0].formants.sustained;
+                const fm2 = d[1].formants && d[1].formants.sustained;
+                let html = `<div class="res-interpret"><h4>What changed (File 1 → File 2)</h4>`;
+                if (c1 && c2) {
+                    html += `<p>Brightness moved from <strong>${Math.round(c1)}</strong> to <strong>${Math.round(c2)} Hz</strong> — <span class="${cls(dc)}">${word(dc, 'brighter', 'darker')}</span> (${dc > 0 ? '+' : ''}${Math.round(dc)} Hz).</p>`;
+                }
+                if (fm1 && fm2 && fm1.f1 && fm2.f1 && fm1.f2 && fm2.f2) {
+                    const df1 = fm2.f1 - fm1.f1, df2 = fm2.f2 - fm1.f2;
+                    html += `<p>F1 ${word(df1, 'rose', 'fell')} (${df1 > 0 ? '+' : ''}${Math.round(df1)} Hz) and F2 ${word(df2, 'rose', 'fell')} (${df2 > 0 ? '+' : ''}${Math.round(df2)} Hz).`;
+                    if (df1 > 0 && df2 > 0) html += ` Both rose — a shift toward <strong>brighter, more feminine-typical resonance</strong>. Good direction.`;
+                    else if (df1 < 0 && df2 < 0) html += ` Both fell — a shift toward darker resonance.`;
+                    else html += ` Mixed movement — double-check you compared the <em>same</em> vowel, since F1/F2 depend heavily on which vowel is spoken.`;
+                    html += `</p><p class="stat-note" style="text-align:left">Formant comparison is only meaningful if both recordings used the same sustained vowel.</p>`;
+                }
+                return html + `</div>`;
             }
 
             displayComparison() {
@@ -1651,33 +2002,20 @@
                     ? `${range1.toUpperCase()} → ${range2.toUpperCase()}`
                     : `Same (${range1.toUpperCase()})`;
 
-                const res1 = this.analysisData[0].resonance || 0;
-                const res2 = this.analysisData[1].resonance || 0;
-                const resDiff = (res1 > 0 && res2 > 0) ? res2 - res1 : null;
-
-                const fm1 = this.analysisData[0].formants && this.analysisData[0].formants.sustained;
-                const fm2 = this.analysisData[1].formants && this.analysisData[1].formants.sustained;
-                const f1Diff = (fm1 && fm2 && fm1.f1 && fm2.f1) ? fm2.f1 - fm1.f1 : null;
-                const f2Diff = (fm1 && fm2 && fm1.f2 && fm2.f2) ? fm2.f2 - fm1.f2 : null;
-
                 // Neutral, directional change formatting. File order is chosen
-                // by the user, so we don't label changes "improvement"/"regression"
-                // — we just show the direction of change from File 1 to File 2.
+                // by the user, so we don't label changes "improvement"/"regression".
+                // (Resonance/formant changes are explained in the resonance panel.)
                 const arrow = (d) => d > 0 ? '▲' : (d < 0 ? '▼' : '–');
                 const signed = (d, unit) => (d > 0 ? '+' : '') + Math.round(d) + ' ' + unit;
-                const changeItem = (label, d, unit, suffix = '') => d === null ? '' : `
-                            <div class="comparison-item">
-                                <div class="comparison-value">${arrow(d)} ${signed(d, unit)}</div>
-                                <div class="comparison-label">${label}${suffix}</div>
-                            </div>`;
 
                 const comparisonHTML = `
                     <div class="comparison-stats">
-                        <h3>📊 Comparison Analysis</h3>
+                        <h3>📊 Pitch Comparison</h3>
                         <p class="stat-note" style="text-align:left; margin-bottom:12px;">
                             Change from <strong>File 1</strong> to <strong>File 2</strong>
                             (${this.analysisData[0].filename} → ${this.analysisData[1].filename}).
                             Arrows show direction only — neither direction is inherently "better".
+                            Resonance &amp; formant changes are explained in the panel above.
                         </p>
                         <div class="comparison-grid">
                             <div class="comparison-item">
@@ -1692,9 +2030,6 @@
                                 <div class="comparison-value">${rangeChange}</div>
                                 <div class="comparison-label">Voice Range</div>
                             </div>
-                            ${changeItem('Resonance Change', resDiff, 'Hz', ' (est.)')}
-                            ${changeItem('F1 Change', f1Diff, 'Hz', ' (est.)')}
-                            ${changeItem('F2 Change', f2Diff, 'Hz', ' (est.)')}
                         </div>
                     </div>
                 `;
@@ -1734,8 +2069,13 @@
                 this.liveFormantOK = this.formantEnabled && this.audioContext.sampleRate <= 16000;
                 const wrap = document.getElementById('liveVowelWrap');
                 const f1f2 = document.getElementById('liveF1F2');
+                const stab = document.getElementById('liveStability');
                 if (wrap) wrap.style.display = this.liveFormantOK ? 'block' : 'none';
-                if (f1f2) f1f2.style.display = this.liveFormantOK ? 'block' : 'none';
+                if (f1f2) { f1f2.style.display = 'none'; f1f2.textContent = 'F1: – Hz · F2: – Hz'; }
+                if (stab) stab.style.display = 'none';
+                // Draw the empty map (reference zones + axes) up front so there's
+                // a clear target before the user makes any sound.
+                if (this.liveFormantOK) this.drawLiveVowelSpace([], null);
 
                 this.liveSource = this.audioContext.createMediaStreamSource(this.liveStream);
                 this.liveAnalyser = this.audioContext.createAnalyser();
@@ -1745,23 +2085,38 @@
                 this.liveBuffer = new Float32Array(this.liveAnalyser.fftSize);
                 this.liveFreqBuffer = new Float32Array(this.liveAnalyser.frequencyBinCount);
                 this.liveFrameCount = 0;
+                // Smoothing + trail state so the live view is stable and
+                // instructive instead of a jittering dot.
+                this.smPitch = null;
+                this.smBright = null;
+                this.smF1 = null;
+                this.smF2 = null;
+                this.formantTrail = [];
+                this.recentF = [];
                 this.liveActive = true;
                 this.liveLoop();
                 return true;
+            }
+
+            // Exponential moving average helper for live smoothing.
+            ema(prev, value, alpha) {
+                return prev === null ? value : prev + alpha * (value - prev);
             }
 
             liveLoop() {
                 if (!this.liveActive) return;
 
                 this.liveAnalyser.getFloatTimeDomainData(this.liveBuffer);
-                const pitch = this.detectPitch(this.liveBuffer, this.audioContext.sampleRate);
+                const rawPitch = this.detectPitch(this.liveBuffer, this.audioContext.sampleRate);
 
                 const pitchEl = document.getElementById('livePitch');
                 const rangeEl = document.getElementById('liveRange');
                 const marker = document.getElementById('liveMarker');
 
-                if (pitch > 0) {
-                    pitchEl.textContent = pitch.toFixed(1) + ' Hz';
+                if (rawPitch > 0) {
+                    this.smPitch = this.ema(this.smPitch, rawPitch, 0.25);
+                    const pitch = this.smPitch;
+                    pitchEl.textContent = pitch.toFixed(0) + ' Hz';
                     const range = this.getDominantRange(pitch);
                     rangeEl.textContent = range.toUpperCase();
                     rangeEl.className = 'current-range ' + range;
@@ -1771,36 +2126,96 @@
                     marker.style.left = (pct * 100) + '%';
                     marker.style.display = 'block';
                 } else {
+                    this.smPitch = null;
                     pitchEl.textContent = '– Hz';
-                    rangeEl.textContent = '—';
+                    rangeEl.textContent = 'listening…';
                     rangeEl.className = 'current-range';
                     marker.style.display = 'none';
                 }
 
-                // Live resonance estimate from the analyser's frequency data
+                // Live brightness (smoothed) -> gauge
                 this.liveAnalyser.getFloatFrequencyData(this.liveFreqBuffer);
-                const centroid = this.liveCentroid();
-                document.getElementById('liveResonance').textContent =
-                    'Resonance: ' + (centroid > 0 ? Math.round(centroid) + ' Hz (est.)' : '– Hz');
+                const rawC = rawPitch > 0 ? this.liveCentroid() : 0;
+                const brightMarker = document.getElementById('liveBrightMarker');
+                const brightVal = document.getElementById('liveBrightVal');
+                if (rawC > 0) {
+                    this.smBright = this.ema(this.smBright, rawC, 0.2);
+                    brightVal.textContent = Math.round(this.smBright) + ' Hz';
+                    brightMarker.style.left = this.brightnessPct(this.smBright) + '%';
+                    brightMarker.style.display = 'block';
+                } else {
+                    brightVal.textContent = '–';
+                    brightMarker.style.display = 'none';
+                }
 
-                // Live formant tracking (throttled to every 3rd voiced frame)
-                if (this.liveFormantOK && pitch > 0) {
+                // Live formant tracking (throttled), smoothed + trailed.
+                if (this.liveFormantOK) {
                     this.liveFrameCount++;
-                    if (this.liveFrameCount % 3 === 0) {
-                        const fs = this.audioContext.sampleRate;
-                        const frame = this.liveBuffer.subarray(this.liveBuffer.length - 512);
-                        const { f1, f2 } = this.assignFormants(this.lpcFormants(frame, fs, 12));
-                        const el = document.getElementById('liveF1F2');
-                        if (f1 && f2) {
-                            el.textContent = `F1: ${Math.round(f1)} Hz · F2: ${Math.round(f2)} Hz`;
-                            this.drawVowelSpace('liveVowelCanvas', [], { f1, f2 });
-                        } else {
-                            el.textContent = 'F1: – Hz · F2: – Hz';
-                        }
-                    }
+                    if (this.liveFrameCount % 3 === 0) this.updateLiveFormants(rawPitch > 0);
                 }
 
                 this.liveRAF = requestAnimationFrame(() => this.liveLoop());
+            }
+
+            updateLiveFormants(voiced) {
+                const el = document.getElementById('liveF1F2');
+                const stab = document.getElementById('liveStability');
+                let f1 = null, f2 = null;
+                if (voiced) {
+                    const fs = this.audioContext.sampleRate;
+                    const frame = this.liveBuffer.subarray(this.liveBuffer.length - 512);
+                    ({ f1, f2 } = this.assignFormants(this.lpcFormants(frame, fs, 12)));
+                }
+
+                if (f1 && f2) {
+                    this.smF1 = this.ema(this.smF1, f1, 0.2);
+                    this.smF2 = this.ema(this.smF2, f2, 0.2);
+                    const sf1 = this.smF1, sf2 = this.smF2;
+
+                    el.textContent = `F1: ${Math.round(sf1)} Hz · F2: ${Math.round(sf2)} Hz`;
+                    el.style.display = 'block';
+
+                    // Trail of recent smoothed positions (capped) for the comet.
+                    this.formantTrail.push({ f1: sf1, f2: sf2 });
+                    if (this.formantTrail.length > 18) this.formantTrail.shift();
+
+                    // Stability: how tightly the last ~12 raw readings cluster.
+                    this.recentF.push({ f1, f2 });
+                    if (this.recentF.length > 12) this.recentF.shift();
+                    const steady = this.formantStability(this.recentF);
+                    stab.style.display = 'inline-block';
+                    if (steady) {
+                        stab.className = 'live-stability steady';
+                        stab.textContent = '● Steady — settled reading';
+                    } else {
+                        stab.className = 'live-stability unsteady';
+                        stab.textContent = '○ Hold a steady vowel to settle';
+                    }
+
+                    // Only show the solid "settled" marker once steady.
+                    this.drawLiveVowelSpace(this.formantTrail, steady ? { f1: sf1, f2: sf2 } : null);
+                } else {
+                    el.textContent = 'F1: – Hz · F2: – Hz';
+                    stab.style.display = 'none';
+                    if (this.formantTrail.length) {
+                        this.formantTrail = [];
+                        this.recentF = [];
+                        this.drawLiveVowelSpace([], null);
+                    }
+                }
+            }
+
+            // "Steady" if recent F1/F2 vary by less than ~6% (coefficient of
+            // variation) — i.e. the user is holding a vowel rather than moving.
+            formantStability(samples) {
+                if (samples.length < 6) return false;
+                const cv = key => {
+                    const vals = samples.map(s => s[key]);
+                    const m = vals.reduce((a, b) => a + b, 0) / vals.length;
+                    const sd = Math.sqrt(vals.reduce((a, b) => a + (b - m) * (b - m), 0) / vals.length);
+                    return sd / m;
+                };
+                return cv('f1') < 0.06 && cv('f2') < 0.06;
             }
 
             liveCentroid() {
@@ -1851,6 +2266,10 @@
             const resultsDiv = document.getElementById('resultsDiv');
             resultsDiv.querySelectorAll('.comparison-stats, .legend').forEach(el => el.remove());
             document.getElementById('statsGrid').innerHTML = '';
+            document.getElementById('resonanceSection').style.display = 'none';
+            document.getElementById('brightnessGauges').innerHTML = '';
+            document.getElementById('formantReadouts').innerHTML = '';
+            document.getElementById('resInterpret').innerHTML = '';
             document.getElementById('vowelContainer').style.display = 'none';
             const summaryEl = document.getElementById('a11ySummary');
             if (summaryEl) summaryEl.textContent = '';
