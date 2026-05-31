@@ -911,10 +911,11 @@
                 const minTau = Math.max(2, Math.floor(sampleRate / maxFreq));
 
                 // Voicing/level gate: ignore silence and quiet background noise.
+                // Kept low so normal-but-quiet recordings still register.
                 let rms = 0;
                 for (let i = 0; i < n; i++) rms += buffer[i] * buffer[i];
                 rms = Math.sqrt(rms / n);
-                if (rms < 0.01) return 0;
+                if (rms < 0.002) return 0;
 
                 // 1) Difference function d(tau).
                 const d = new Float32Array(maxTau + 1);
@@ -940,8 +941,10 @@
                 // 3) Absolute threshold: take the FIRST tau that dips below the
                 // threshold and reaches its local minimum (the true period),
                 // rather than the global minimum (which is prone to octave-down
-                // errors). This is the core of YIN's octave robustness.
-                const threshold = 0.15;
+                // errors). This is the core of YIN's octave robustness. The
+                // threshold is generous (0.25) so real, slightly noisy speech
+                // still registers instead of producing blank results.
+                const threshold = 0.25;
                 let tau = -1;
                 for (let t = minTau + 1; t < maxTau; t++) {
                     if (cmnd[t] < threshold) {
@@ -951,13 +954,13 @@
                     }
                 }
                 // Fallback: no dip under threshold -> use the global minimum,
-                // but only accept it if it's reasonably periodic.
+                // accepting it unless it is clearly aperiodic (noise/silence).
                 if (tau === -1) {
                     let best = minTau, bestVal = cmnd[minTau];
                     for (let t = minTau + 1; t <= maxTau; t++) {
                         if (cmnd[t] < bestVal) { bestVal = cmnd[t]; best = t; }
                     }
-                    if (bestVal > 0.3) return 0; // not periodic enough -> unvoiced
+                    if (bestVal > 0.5) return 0; // not periodic enough -> unvoiced
                     tau = best;
                 }
 
