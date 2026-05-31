@@ -964,6 +964,38 @@
                     tau = best;
                 }
 
+                // 3b) Harmonic (octave-up) correction. A weak fundamental under a
+                // strong upper harmonic - typical of the quiet, breathy tail of an
+                // utterance - produces a shallow dip at the HARMONIC period (a short
+                // tau) that crosses the lenient threshold before the far deeper dip
+                // at the TRUE period (an integer multiple of that tau). Left alone,
+                // YIN locks onto the harmonic and reports 2-3x the real pitch - this
+                // is what made a clear low male voice ramp up into the female band at
+                // the end of an otherwise clean recording. Scan integer multiples of
+                // the chosen tau and adopt a longer period only when its dip is
+                // CLEARLY deeper (more periodic). Requiring "clearly deeper" rather
+                // than merely "as deep" is what stops this from causing the opposite,
+                // octave-DOWN error on a clean signal, whose dips at 2*tau, 3*tau are
+                // only equally deep - never deeper - than the one at the true period.
+                {
+                    let bestTau = tau, bestVal = cmnd[tau];
+                    for (let m = 2; m * tau <= maxTau; m++) {
+                        const center = m * tau;
+                        const win = Math.max(2, Math.round(tau * 0.04));
+                        const lo = Math.max(minTau, center - win);
+                        const hi = Math.min(maxTau, center + win);
+                        let localMin = Infinity, localPos = -1;
+                        for (let k = lo; k <= hi; k++) {
+                            if (cmnd[k] < localMin) { localMin = cmnd[k]; localPos = k; }
+                        }
+                        if (localPos !== -1 && localMin < bestVal - 0.06 && localMin < 0.2) {
+                            bestVal = localMin;
+                            bestTau = localPos;
+                        }
+                    }
+                    tau = bestTau;
+                }
+
                 // 4) Parabolic interpolation around the chosen dip for sub-sample
                 // period resolution.
                 const x0 = tau > minTau ? cmnd[tau - 1] : cmnd[tau];
