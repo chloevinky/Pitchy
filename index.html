@@ -933,7 +933,7 @@
 
                 // Smooth and downsample the data
                 const result = {
-                    pitchData: this.smoothPitchData(pitchData),
+                    pitchData: this.smoothPitchData(this.correctOctaves(pitchData)),
                     resonance: resonanceCount > 0 ? resonanceSum / resonanceCount : 0,
                     formants: null
                 };
@@ -1122,6 +1122,35 @@
                     total += mag;
                 }
                 return total > 0 ? weighted / total : 0;
+            }
+
+            correctOctaves(pitchData) {
+                if (pitchData.length < 4) return pitchData;
+
+                // Speech pitch clusters tightly around its median, so a value near
+                // an integer multiple (2x, 3x) of that median is a harmonic mis-read
+                // - the YIN detector latching onto an upper harmonic when the
+                // fundamental weakens, which is what hooks a deep male contour up
+                // toward the female band as a phrase trails off. Fold such outliers
+                // back down, but only when the fold lands close to the established
+                // pitch, so a genuinely high (or rising) voice is never dragged down.
+                const sorted = pitchData.map(p => p.frequency).slice().sort((a, b) => a - b);
+                const ref = sorted[Math.floor(sorted.length / 2)];
+
+                return pitchData.map(p => {
+                    const f = p.frequency;
+                    if (f <= ref * 1.5) return p;
+                    let best = f, bestErr = Math.abs(f - ref);
+                    for (let d = 2; d <= 4; d++) {
+                        const cand = f / d;
+                        const err = Math.abs(cand - ref);
+                        if (err < bestErr) { bestErr = err; best = cand; }
+                    }
+                    if (best !== f && Math.abs(best - ref) <= ref * 0.25 && best >= 80) {
+                        return { time: p.time, frequency: best };
+                    }
+                    return p;
+                });
             }
 
             smoothPitchData(pitchData) {
