@@ -622,7 +622,7 @@
         <div class="analysis-section" id="analysisSection">
             <div class="loading" id="loadingDiv">
                 <div class="spinner"></div>
-                <p>Analyzing your voice...</p>
+                <p id="loadingText">Analyzing your voice...</p>
             </div>
 
             <div id="resultsDiv" style="display: none;">
@@ -802,15 +802,25 @@
             }
 
             async analyzeAudio() {
+                const loadingDiv = document.getElementById('loadingDiv');
                 document.getElementById('analysisSection').style.display = 'block';
-                document.getElementById('loadingDiv').style.display = 'block';
+                loadingDiv.style.display = 'block';
+                loadingDiv.innerHTML = '<div class="spinner"></div><p id="loadingText">Analyzing your voice...</p>';
                 document.getElementById('resultsDiv').style.display = 'none';
+
+                // Yield once so the browser paints the loading state before the
+                // CPU-heavy analysis starts.
+                await new Promise(resolve => setTimeout(resolve, 0));
 
                 try {
                     this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
                     this.analysisData = [];
 
                     for (let i = 0; i < this.audioFiles.length; i++) {
+                        if (this.audioFiles.length > 1) {
+                            this.setLoadingText(`Analyzing file ${i + 1} of ${this.audioFiles.length}...`);
+                            await new Promise(resolve => setTimeout(resolve, 0));
+                        }
                         const audioBuffer = await this.loadAudioFile(this.audioFiles[i]);
                         const result = await this.extractPitchData(audioBuffer);
 
@@ -825,8 +835,17 @@
                     this.displayResults();
                 } catch (error) {
                     console.error('Analysis failed:', error);
-                    alert('Analysis failed. Please try again with different files.');
+                    const message = error && error.message ? error.message : 'Unknown error';
+                    loadingDiv.innerHTML =
+                        '<p style="color:#B5532A;font-weight:bold;">Could not analyze this audio file.</p>' +
+                        '<p style="margin-top:10px;color:#6B6256;">' + message + '</p>' +
+                        '<p style="margin-top:10px;color:#6B6256;">Please try a different recording - uncompressed WAV or MP3 files work best.</p>';
                 }
+            }
+
+            setLoadingText(text) {
+                const el = document.getElementById('loadingText');
+                if (el) el.textContent = text;
             }
 
             async loadAudioFile(file) {
@@ -846,13 +865,30 @@
             }
 
             async extractPitchData(audioBuffer) {
-                const channelData = audioBuffer.getChannelData(0);
-                const sampleRate = audioBuffer.sampleRate;
+                // Resample to a fixed, low analysis rate before detecting pitch.
+                // The YIN detector is O(n^2) per frame, so running it at the source
+                // rate makes long or high-sample-rate recordings (quality mics often
+                // decode at 44.1/48 kHz) block the main thread long enough that the
+                // results never seem to appear. 16 kHz keeps the whole pitch range
+                // and the <=5 kHz brightness band intact while making analysis fast
+                // and independent of the source rate. (Live mode already runs YIN at
+                // ~11 kHz, so low-rate detection is well established here.)
+                let channelData, sampleRate;
+                try {
+                    channelData = await this.resampleBuffer(audioBuffer, 16000);
+                    sampleRate = 16000;
+                } catch (err) {
+                    // Fall back to the original audio if offline resampling fails.
+                    channelData = audioBuffer.getChannelData(0);
+                    sampleRate = audioBuffer.sampleRate;
+                }
+
                 const windowSize = 2048;
-                const hopSize = 1024; // Reduced data points
+                const hopSize = 512;
                 const pitchData = [];
                 let resonanceSum = 0;
                 let resonanceCount = 0;
+                let processed = 0;
 
                 for (let i = 0; i < channelData.length - windowSize; i += hopSize) {
                     const window = channelData.slice(i, i + windowSize);
@@ -872,6 +908,12 @@
                             resonanceSum += centroid;
                             resonanceCount++;
                         }
+                    }
+
+                    // Yield to the browser periodically so the page stays responsive
+                    // (and the loading spinner keeps animating) instead of freezing.
+                    if (++processed % 200 === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 0));
                     }
                 }
 
@@ -1196,6 +1238,28 @@
                 this.analysisData.forEach(data => {
                     this.drawPitchLine(data, width, height, padding);
                 });
+
+                // If no pitch was detected, say so instead of leaving a blank chart.
+                const hasData = this.analysisData.some(d => d.pitchData && d.pitchData.length > 0);
+                if (!hasData) {
+                    this.ctx.fillStyle = '#6B6256';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.font = 'bold 18px "Lucida Sans Unicode", sans-serif';
+                    this.ctx.fillText('No pitch detected in this recording.', width / 2, height / 2 - 8);
+                    this.ctx.font = '14px "Lucida Sans Unicode", sans-serif';
+                    this.ctx.fillText('Try a louder, clearer recording with steady voiced sound.', width / 2, height / 2 + 18);
+                    this.ctx.textAlign = 'left';
+                }
+            }
+
+            getMaxTime() {
+                let maxTime = 0;
+                this.analysisData.forEach(d => {
+                    d.pitchData.forEach(p => {
+                        if (p.time > maxTime) maxTime = p.time;
+                    });
+                });
+                return maxTime > 0 ? maxTime : 1;
             }
 
             drawVoiceRangeBands(width, height, padding) {
@@ -1241,9 +1305,7 @@
                 const graphHeight = height - padding * 2;
                 
                 // Get max time from all files
-                const maxTime = Math.max(...this.analysisData.flatMap(d => 
-                    d.pitchData.map(p => p.time)
-                ));
+                const maxTime = this.getMaxTime();
 
                 this.ctx.strokeStyle = '#E0D6C2';
                 this.ctx.lineWidth = 1;
@@ -1308,10 +1370,8 @@
                 const graphHeight = height - padding * 2;
                 
                 // Get max time from all files
-                const maxTime = Math.max(...this.analysisData.flatMap(d => 
-                    d.pitchData.map(p => p.time)
-                ));
-                
+                const maxTime = this.getMaxTime();
+
                 const minFreq = 80;
                 const maxFreq = 320;
 
