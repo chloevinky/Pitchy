@@ -885,35 +885,49 @@
 
                 const windowSize = 2048;
                 const hopSize = 512;
-                const pitchData = [];
-                let resonanceSum = 0;
-                let resonanceCount = 0;
-                let processed = 0;
 
+                // First pass: detect pitch (and a brightness estimate) per frame.
+                const frames = [];
+                let processed = 0;
                 for (let i = 0; i < channelData.length - windowSize; i += hopSize) {
                     const window = channelData.slice(i, i + windowSize);
                     const pitch = this.detectPitch(window, sampleRate);
-                    const timeStamp = i / sampleRate;
-
-                    // Only add valid pitch data
-                    if (pitch > 0 && pitch >= 80 && pitch <= 400) {
-                        pitchData.push({
-                            time: timeStamp,
-                            frequency: pitch
-                        });
-
-                        // Accumulate a resonance/brightness estimate over voiced frames
-                        const centroid = this.spectralCentroid(window, sampleRate);
-                        if (centroid > 0) {
-                            resonanceSum += centroid;
-                            resonanceCount++;
-                        }
-                    }
+                    const voiced = pitch > 0 && pitch >= 80 && pitch <= 400;
+                    frames.push({
+                        time: i / sampleRate,
+                        frequency: voiced ? pitch : 0,
+                        centroid: voiced ? this.spectralCentroid(window, sampleRate) : 0
+                    });
 
                     // Yield to the browser periodically so the page stays responsive
                     // (and the loading spinner keeps animating) instead of freezing.
                     if (++processed % 200 === 0) {
                         await new Promise(resolve => setTimeout(resolve, 0));
+                    }
+                }
+
+                // Second pass: drop isolated voiced frames - a voiced frame with no
+                // voiced neighbour. Real phonation is continuous, so a lone voiced
+                // frame flanked by silence is almost always a transient (a consonant
+                // burst, click or breath) or a noise/octave mis-read. These isolated
+                // frames are exactly what made this deep male voice spike up into the
+                // female band at the quiet tail of the clip: the silent frames between
+                // them get dropped, so they become neighbours in the point sequence
+                // and the median smoother locks onto them instead of rejecting them.
+                const pitchData = [];
+                let resonanceSum = 0;
+                let resonanceCount = 0;
+                for (let i = 0; i < frames.length; i++) {
+                    const f = frames[i];
+                    if (f.frequency <= 0) continue;
+                    const prevVoiced = i > 0 && frames[i - 1].frequency > 0;
+                    const nextVoiced = i < frames.length - 1 && frames[i + 1].frequency > 0;
+                    if (!prevVoiced && !nextVoiced) continue;
+
+                    pitchData.push({ time: f.time, frequency: f.frequency });
+                    if (f.centroid > 0) {
+                        resonanceSum += f.centroid;
+                        resonanceCount++;
                     }
                 }
 
